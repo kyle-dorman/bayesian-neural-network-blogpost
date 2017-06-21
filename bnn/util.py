@@ -108,3 +108,14 @@ def open_pickle_file(file_name):
   with open(full_file_name, mode='rb') as f:
     return pickle.load(f)
 
+def stop_instance():
+  ec2 = boto3.resource('ec2', region_name='us-east-1')
+  instances = ec2.instances.filter(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])
+  ids = [i.id for i in instances]
+  ec2.instances.filter(InstanceIds=ids).stop() # .terminate()
+
+def isAWS():
+  cwd_path = os.getcwd().split("/")
+  if len(cwd_path) > 2 and cwd_path[2] == 'kyledorman':
+    return False
+  return True

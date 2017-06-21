@@ -7,73 +7,92 @@ project_path, x = os.path.split(os.path.dirname(os.path.realpath(__file__)))
 sys.path.append(project_path)
 
 import tensorflow as tf
-from keras.datasets import cifar10
 from keras.optimizers import Adam
-from keras.datasets import mnist
-import numpy as np
-import cv2
-from bnn.model import create_model
+from keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
+
+from bnn.model import create_model, encoder_min_input_size
 from bnn.loss_equations import bayesian_categorical_crossentropy
+from bnn.util import isAWS, upload_s3
+from bnn.data import test_train_data
 
 class Config(object):
-	def __init__(self, encoder, batch_size, max_epochs):
+	def __init__(self, encoder, dataset, batch_size, epochs, monte_carlo_simulations):
 		self.encoder = encoder
-		self.max_epochs = max_epochs
+		self.dataset = dataset
+		self.epochs = epochs
 		self.batch_size = batch_size
+		self.monte_carlo_simulations = monte_carlo_simulations
 
 	def info(self):
 		print("encoder:", self.encoder)
 		print("batch_size:", self.batch_size)
-		print("epochs:", self.max_epochs)
+		print("epochs:", self.epochs)
+		print("dataset:", self.dataset)
+		print("monte_carlo_simulations:", self.monte_carlo_simulations)
 
 	def model_file(self):
-		return "model_{}_{}_{}.ckpt".format(self.encoder, self.batch_size, self.max_epochs)
+		return "model_{}_{}_{}_{}_{}.ckpt".format(self.encoder, self.dataset, self.batch_size, self.epochs, self.monte_carlo_simulations)
 
 	def csv_log_file(self):
-		return "model_logs_{}_{}_{}.csv".format(self.encoder, self.batch_size, self.max_epochs, self.video_frames, self.min_delta, self.patience)
-
-def one_hot(labels):
-	if labels.shape[-1] == 1:
-		labels = np.reshape(labels, (-1))
-	max_label = np.max(labels) + 1
-	return np.eye(max_label)[labels]
-
-def resize(image, shape):
-	return cv2.resize(image, shape)
-
-def add_zeros(labels):
-	shape = list(labels.shape)
-	shape[-1] = 1
-	return np.hstack((labels, np.zeros(shape)))
+		return "model_training_logs_{}_{}_{}_{}_{}.csv".format(self.encoder, self.dataset, self.batch_size, self.epochs, self.monte_carlo_simulations)
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
-flags.DEFINE_integer('batch_size', 32, 'The batch size for the generator')
+flags.DEFINE_string('dataset', 'cifar10', 'The dataset to train the model on.')
+flags.DEFINE_string('encoder', 'resnet50', 'The encoder model to train from.')
 flags.DEFINE_integer('epochs', 1, 'Number of training examples.')
-flags.DEFINE_string('encoder', 'ResNet50', 'The encoder model to train from.')
+flags.DEFINE_integer('monte_carlo_simulations', 100, 'The number of monte carlo simulations to run for the aleatoric categorical crossentroy loss function.')
+flags.DEFINE_integer('batch_size', 32, 'The batch size for the generator')
+flags.DEFINE_boolean('debug', False, 'If this is for debugging the model/training process or not.')
+flags.DEFINE_integer('verbose', 0, 'Whether to use verbose logging when constructing the data object.')
+flags.DEFINE_boolean('stop', True, 'Stop aws instance after finished running.')
 # flags.DEFINE_float('min_delta', 0.1, 'Early stopping minimum change value.')
 # flags.DEFINE_integer('patience', 10, 'Early stopping epochs patience to wait before stopping.')
-flags.DEFINE_boolean('verbose', False, 'Whether to use verbose logging when constructing the data object.')
-# flags.DEFINE_boolean('stop', True, 'Stop aws instance after finished running.')
 
 
 def main(_):
-	config = Config(FLAGS.encoder, FLAGS.batch_size, FLAGS.epochs)
+	config = Config(FLAGS.encoder, FLAGS.dataset, FLAGS.batch_size, FLAGS.epochs, FLAGS.monte_carlo_simulations)
 	config.info()
 
-	(x_train, y_train), (x_test, y_test) = cifar10.load_data()
-	x_train = np.array([resize(i, (197, 197)) for i in x_train[0:1]])
-	y_train = one_hot(y_train)[0:1]
+	min_image_size = encoder_min_input_size(FLAGS.encoder)
+	
+	((x_train, y_train), (x_test, y_test)) = test_train_data(FLAGS.dataset, min_image_size, FLAGS.debug)
 
-	model = create_model([197,197,3], 10)
+	min_image_size = list(min_image_size)
+	min_image_size.append(3)
+	num_classes = y_train.shape[-1]
 
-	print(model.summary())
+	model = create_model(min_image_size, num_classes)
 
-	model.compile(optimizer=Adam(lr=1e-4), 
-		loss={'logits_variance':bayesian_categorical_crossentropy(100, 10)})
+	if FLAGS.debug:
+		print(model.summary())
+		callbacks = None
+	else:
+		callbacks = [
+			ModelCheckpoint(config.model_file(), verbose=FLAGS.verbose, save_best_only=True),
+			CSVLogger(config.csv_log_file())
+			# EarlyStopping(min_delta=min_delta, patience=patience, verbose=1)
+		]
 
-	model.fit(x_train, y_train)
+	model.compile(
+		optimizer=Adam(lr=1e-3), 
+		loss={'logits_variance': bayesian_categorical_crossentropy(FLAGS.monte_carlo_simulations, num_classes)},
+		metrics={'softmax_output': 'categorical_accuracy'})
+
+	model.fit(x_train, y_train, 
+		callbacks=callbacks,
+		verbose=FLAGS.verbose,
+		epochs=FLAGS.epochs,
+		batch_size=FLAGS.batch_size,
+		validation_data=(x_test, y_test))
+
+	if isAWS():
+		upload_s3(config.model_file())
+		upload_s3(config.csv_log_file())
+
+	if isAWS() and FLAGS.stop:
+		stop_instance()
 
 
 if __name__ == '__main__':

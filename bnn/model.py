@@ -25,3 +25,9 @@ def create_model(input_shape, output_classes):
 	model = Model(inputs=inpt, outputs=[logits_variance,softmax_output])
 
 	return model
+
+def encoder_min_input_size(model_name):
+	if model_name == 'resnet50':
+		return (197, 197)
+	else:
+		raise ValueError('Unexpected encoder model ' + model_name + ".")
