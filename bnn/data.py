@@ -31,10 +31,10 @@ def test_train_data(dataset, min_image_size, isDebug):
 
 def clean_dataset(x_train, y_train, x_test, y_test, min_image_size, isDebug):
 	if isDebug:
-		x_train = x_train[0:15]
-		y_train = y_train[0:15]
-		x_test = x_test[0:15]
-		y_test = y_test[0:15]
+		x_train = x_train[0:128]
+		y_train = y_train[0:128]
+		x_test = x_test[0:128]
+		y_test = y_test[0:128]
 
 	print("Resizing images from", x_train.shape[1:-1], "to", min_image_size)
 	x_train = np.array([resize(i, min_image_size) for i in x_train])

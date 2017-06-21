@@ -12,7 +12,7 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
 
 from bnn.model import create_model, encoder_min_input_size
 from bnn.loss_equations import bayesian_categorical_crossentropy
-from bnn.util import isAWS, upload_s3
+from bnn.util import isAWS, upload_s3, stop_instance
 from bnn.data import test_train_data
 
 class Config(object):
@@ -75,11 +75,13 @@ def main(_):
 			# EarlyStopping(min_delta=min_delta, patience=patience, verbose=1)
 		]
 
+	print("Compiling model.")
 	model.compile(
-		optimizer=Adam(lr=1e-3), 
+		optimizer=Adam(lr=1e-4), 
 		loss={'logits_variance': bayesian_categorical_crossentropy(FLAGS.monte_carlo_simulations, num_classes)},
 		metrics={'softmax_output': 'categorical_accuracy'})
 
+	print("Starting model train process.")
 	model.fit(x_train, y_train, 
 		callbacks=callbacks,
 		verbose=FLAGS.verbose,
@@ -87,7 +89,9 @@ def main(_):
 		batch_size=FLAGS.batch_size,
 		validation_data=(x_test, y_test))
 
-	if isAWS():
+	print("Finished training model.")
+
+	if isAWS() and FLAGS.debug == False:
 		upload_s3(config.model_file())
 		upload_s3(config.csv_log_file())
 
