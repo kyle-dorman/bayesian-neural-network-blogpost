@@ -1,6 +1,6 @@
 #!/bin/python
 
-from bnn.util import open_pickle_file, download_file, unzip_data
+from bnn.util import open_pickle_file, download_file, unzip_data, BatchConfig
 from keras.datasets import cifar10
 import numpy as np
 import cv2
@@ -18,33 +18,49 @@ def get_traffic_sign_data():
 
   return ((train['features'], train['labels']), (test['features'], test['labels']), (valid['features'], valid['labels']))
 
-def test_train_data(dataset, min_image_size, isDebug):
+def test_train_data(dataset, min_image_size, is_debug):
 	if dataset == 'cifar10':
 		(x_train, y_train), (x_test, y_test) = cifar10.load_data()
-		return clean_dataset(x_train, y_train, x_test, y_test, min_image_size, isDebug)
-
+		(x_train, x_test) = clean_feature_dataset(x_train, x_test, min_image_size, is_debug)
+		(y_train, y_test) = clean_label_dataset(y_train, y_test, is_debug)
+		return ((x_train, y_train), (x_test, y_test))
 	# todo: add more datasets
 	else:
 		raise ValueError("Unexpected dataset " + dataset + ".")
 
+def test_train_batch_data(dataset, encoder, is_debug):
+	if dataset == 'cifar10':
+		(_, y_train), (_, y_test) = cifar10.load_data()
+		(y_train, y_test) = clean_label_dataset(y_train, y_test, is_debug)
+		config = BatchConfig(encoder, dataset)
+		x_train = open_pickle_file(config.batch_folder() + "/train.p")
+		x_test = open_pickle_file(config.batch_folder() + "/test.p")
+		return ((x_train, y_train), (x_test, y_test))
+	# todo: add more datasets
+	else:
+		raise ValueError("Unexpected dataset " + dataset + ".")
 
-
-def clean_dataset(x_train, y_train, x_test, y_test, min_image_size, isDebug):
-	if isDebug:
-		x_train = x_train[0:128]
-		y_train = y_train[0:128]
-		x_test = x_test[0:128]
-		y_test = y_test[0:128]
+def clean_feature_dataset(x_train, x_test, min_image_size, is_debug):
+	if is_debug:
+		x_train = x_train[0:10]
+		x_test = x_test[0:10]
 
 	print("Resizing images from", x_train.shape[1:-1], "to", min_image_size)
 	x_train = np.array([resize(i, min_image_size) for i in x_train])
 	print("Done resizing train images.")
 	x_test = np.array([resize(i, min_image_size) for i in x_test])
 	print("Done resizing test images.")
+	return (x_train, x_test)
+
+def clean_label_dataset(y_train, y_test, is_debug):
 	y_train = one_hot(y_train)
 	y_test = one_hot(y_test)
 
-	return ((x_train, y_train), (x_test, y_test))
+	if is_debug:
+		y_train = y_train[0:10]
+		y_test = y_test[0:10]
+
+	return (y_train, y_test)
 
 def one_hot(labels):
 	if labels.shape[-1] == 1:

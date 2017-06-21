@@ -10,31 +10,10 @@ import tensorflow as tf
 from keras.optimizers import Adam
 from keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
 
-from bnn.model import create_model, encoder_min_input_size
+from bnn.model import create_baysean_model, encoder_min_input_size
 from bnn.loss_equations import bayesian_categorical_crossentropy
-from bnn.util import isAWS, upload_s3, stop_instance
-from bnn.data import test_train_data
-
-class Config(object):
-	def __init__(self, encoder, dataset, batch_size, epochs, monte_carlo_simulations):
-		self.encoder = encoder
-		self.dataset = dataset
-		self.epochs = epochs
-		self.batch_size = batch_size
-		self.monte_carlo_simulations = monte_carlo_simulations
-
-	def info(self):
-		print("encoder:", self.encoder)
-		print("batch_size:", self.batch_size)
-		print("epochs:", self.epochs)
-		print("dataset:", self.dataset)
-		print("monte_carlo_simulations:", self.monte_carlo_simulations)
-
-	def model_file(self):
-		return "model_{}_{}_{}_{}_{}.ckpt".format(self.encoder, self.dataset, self.batch_size, self.epochs, self.monte_carlo_simulations)
-
-	def csv_log_file(self):
-		return "model_training_logs_{}_{}_{}_{}_{}.csv".format(self.encoder, self.dataset, self.batch_size, self.epochs, self.monte_carlo_simulations)
+from bnn.util import isAWS, upload_s3, stop_instance, BayesianConfig
+from bnn.data import test_train_batch_data
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -52,18 +31,18 @@ flags.DEFINE_boolean('stop', True, 'Stop aws instance after finished running.')
 
 
 def main(_):
-	config = Config(FLAGS.encoder, FLAGS.dataset, FLAGS.batch_size, FLAGS.epochs, FLAGS.monte_carlo_simulations)
+	config = BayesianConfig(FLAGS.encoder, FLAGS.dataset, FLAGS.batch_size, FLAGS.epochs, FLAGS.monte_carlo_simulations)
 	config.info()
 
 	min_image_size = encoder_min_input_size(FLAGS.encoder)
 	
-	((x_train, y_train), (x_test, y_test)) = test_train_data(FLAGS.dataset, min_image_size, FLAGS.debug)
+	((x_train, y_train), (x_test, y_test)) = test_train_batch_data(FLAGS.dataset, FLAGS.encoder, FLAGS.debug)
 
 	min_image_size = list(min_image_size)
 	min_image_size.append(3)
 	num_classes = y_train.shape[-1]
 
-	model = create_model(min_image_size, num_classes)
+	model = create_baysean_model(FLAGS.encoder, min_image_size, num_classes)
 
 	if FLAGS.debug:
 		print(model.summary())

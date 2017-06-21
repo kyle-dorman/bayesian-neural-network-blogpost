@@ -1,8 +1,10 @@
 data/*
+batch_data/*
 .DS_Store
 model.ckpt
 bnn/__pycache__
 *.zip
 *.ckpt
 
+!batch_data/.keep_me
 !data/.keep_me
