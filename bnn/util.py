@@ -6,6 +6,8 @@ import os.path
 import zipfile
 from urllib.request import urlretrieve
 import pickle
+import threading
+import sys
 
 # Get full path to a resource underneath this project (bayesian-neural-network-blogpost)
 def full_path(name):
