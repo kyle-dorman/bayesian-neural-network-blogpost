@@ -1,0 +1,7 @@
+data/*
+.DS_Store
+model.ckpt
+bnn/__pycache__/
+*.zip
+
+!data/.keep_me
