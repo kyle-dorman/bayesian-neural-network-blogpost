@@ -9,7 +9,7 @@ sys.path.append(project_path)
 import tensorflow as tf
 
 from bnn.model import encoder_model, encoder_min_input_size
-from bnn.util import isAWS, upload_s3, stop_instance, save_pickle_file, BatchConfig
+from bnn.util import isAWS, upload_s3, stop_instance, save_pickle_file, BatchConfig, full_path
 from bnn.data import test_train_data
 
 flags = tf.app.flags
@@ -25,6 +25,9 @@ flags.DEFINE_boolean('stop', True, 'Stop aws instance after finished running.')
 def main(_):
 	config = BatchConfig(FLAGS.encoder, FLAGS.dataset)
 	config.info()
+
+	if os.path.exists(full_path(config.batch_folder())) == False:
+		os.makedirs(full_path(config.batch_folder))
 
 	min_image_size = encoder_min_input_size(FLAGS.encoder)
 	
