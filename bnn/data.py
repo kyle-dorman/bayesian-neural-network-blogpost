@@ -42,8 +42,8 @@ def test_train_batch_data(dataset, encoder, is_debug):
 
 def clean_feature_dataset(x_train, x_test, min_image_size, is_debug):
 	if is_debug:
-		x_train = x_train[0:10]
-		x_test = x_test[0:10]
+		x_train = x_train[0:128]
+		x_test = x_test[0:128]
 
 	print("Resizing images from", x_train.shape[1:-1], "to", min_image_size)
 	x_train = np.array([resize(i, min_image_size) for i in x_train])
@@ -57,8 +57,8 @@ def clean_label_dataset(y_train, y_test, is_debug):
 	y_test = one_hot(y_test)
 
 	if is_debug:
-		y_train = y_train[0:10]
-		y_test = y_test[0:10]
+		y_train = y_train[0:128]
+		y_test = y_test[0:128]
 
 	return (y_train, y_test)
 
