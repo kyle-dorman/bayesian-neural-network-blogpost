@@ -2,17 +2,26 @@
 
 from keras.applications.resnet50 import ResNet50
 # from keras.applications.resnet50 import preprocess_input, decode_predictions
-from keras.models import Model
+from keras.models import Model, load_model
 from keras.layers import Dense, Input, Flatten, Dropout, Activation, Lambda
 from keras.layers.normalization import BatchNormalization
 from keras.layers.merge import concatenate
 
-def create_full_model(model_name, input_shape, output_classes):
-	encoder = encoder_model(model_name, input_shape)
+def load_full_model(model_name, checkpoint, input_shape):
+	encoder = create_encoder_model(model_name, input_shape)
 	baysean_model = load_baysean_model(checkpoint)
+	outputs = baysean_model(encoder.outputs)
+	# hack to rename outputs
+	logits_variance = Lambda(lambda x: x, name='logits_variance')(outputs[0])
+	softmax_output = Lambda(lambda x: x, name='softmax_output')(outputs[1])
+
+	return Model(inputs=encoder.inputs, outputs=[logits_variance, softmax_output])
+
+def load_baysean_model(checkpoint):
+	return load_model(checkpoint)
 
 def create_baysean_model(model_name, input_shape, output_classes):
-	encoder = encoder_model(model_name, input_shape)
+	encoder = create_encoder_model(model_name, input_shape)
 	input_tensor = Input(shape=encoder.output_shape[1:])
 	x = BatchNormalization(name='post_encoder')(input_tensor)
 	x = Dropout(0.5)(x)
@@ -20,7 +29,8 @@ def create_baysean_model(model_name, input_shape, output_classes):
 	x = BatchNormalization()(x)
 	x = Dropout(0.5)(x)
 	logits = Dense(output_classes, name='logits')(x)
-	variance = Dense(1, name='variance')(x)
+	variance_pre = Dense(1, name='variance_pre')(x)
+	variance = Activation('softplus', name='variance')(variance_pre)
 	logits_variance = concatenate([logits, variance], name='logits_variance')
 	softmax_output = Activation('softmax', name='softmax_output')(logits)
 
@@ -28,7 +38,7 @@ def create_baysean_model(model_name, input_shape, output_classes):
 
 	return model
 
-def encoder_model(model_name, input_shape):
+def create_encoder_model(model_name, input_shape):
 	input_tensor = Input(shape=input_shape)
 
 	if model_name == 'resnet50':

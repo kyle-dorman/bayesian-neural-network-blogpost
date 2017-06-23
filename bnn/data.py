@@ -35,6 +35,9 @@ def test_train_batch_data(dataset, encoder, is_debug):
 		config = BatchConfig(encoder, dataset)
 		x_train = open_pickle_file(config.batch_folder() + "/train.p")
 		x_test = open_pickle_file(config.batch_folder() + "/test.p")
+		if is_debug:
+			x_train = x_train[0:128]
+			x_test = x_test[0:128]
 		return ((x_train, y_train), (x_test, y_test))
 	# todo: add more datasets
 	else:
