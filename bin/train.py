@@ -26,8 +26,8 @@ flags.DEFINE_integer('batch_size', 32, 'The batch size for the generator')
 flags.DEFINE_boolean('debug', False, 'If this is for debugging the model/training process or not.')
 flags.DEFINE_integer('verbose', 0, 'Whether to use verbose logging when constructing the data object.')
 flags.DEFINE_boolean('stop', True, 'Stop aws instance after finished running.')
-# flags.DEFINE_float('min_delta', 0.1, 'Early stopping minimum change value.')
-# flags.DEFINE_integer('patience', 10, 'Early stopping epochs patience to wait before stopping.')
+flags.DEFINE_float('min_delta', 0.5, 'Early stopping minimum change value.')
+flags.DEFINE_integer('patience', 10, 'Early stopping epochs patience to wait before stopping.')
 
 
 def main(_):
@@ -50,8 +50,8 @@ def main(_):
 	else:
 		callbacks = [
 			ModelCheckpoint(config.model_file(), verbose=FLAGS.verbose, save_best_only=True),
-			CSVLogger(config.csv_log_file())
-			# EarlyStopping(min_delta=min_delta, patience=patience, verbose=1)
+			CSVLogger(config.csv_log_file()),
+			EarlyStopping(monitor='val_logits_variance_loss', min_delta=FLAGS.min_delta, patience=FLAGS.patience, verbose=1)
 		]
 
 	print("Compiling model.")
