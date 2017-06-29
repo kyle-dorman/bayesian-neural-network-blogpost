@@ -8,7 +8,7 @@ sys.path.append(project_path)
 
 import tensorflow as tf
 
-from bnn.model import encoder_model, encoder_min_input_size
+from bnn.model import create_encoder_model, encoder_min_input_size
 from bnn.util import isAWS, upload_s3, stop_instance, save_pickle_file, BatchConfig, full_path
 from bnn.data import test_train_data
 
@@ -36,7 +36,7 @@ def main(_):
 	input_shape = list(min_image_size)
 	input_shape.append(3)
 
-	encoder = encoder_model(FLAGS.encoder, input_shape)
+	encoder = create_encoder_model(FLAGS.encoder, input_shape)
 
 	print("Compiling model.")
 	encoder.compile(optimizer='sgd', loss='mean_squared_error')

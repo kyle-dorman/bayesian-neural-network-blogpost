@@ -2,6 +2,7 @@
 
 from bnn.util import open_pickle_file, download_file, unzip_data, BatchConfig
 from keras.datasets import cifar10
+from keras.applications.resnet50 import preprocess_input
 import numpy as np
 import cv2
 
@@ -49,11 +50,11 @@ def clean_feature_dataset(x_train, x_test, min_image_size, is_debug):
 		x_test = x_test[0:128]
 
 	print("Resizing images from", x_train.shape[1:-1], "to", min_image_size)
-	x_train = np.array([resize(i, min_image_size) for i in x_train])
+	x_train = np.array([resize(i, min_image_size) for i in x_train], dtype=np.float64)
 	print("Done resizing train images.")
-	x_test = np.array([resize(i, min_image_size) for i in x_test])
+	x_test = np.array([resize(i, min_image_size) for i in x_test], dtype=np.float64)
 	print("Done resizing test images.")
-	return (x_train, x_test)
+	return (preprocess_input(x_train), preprocess_input(x_test))
 
 def clean_label_dataset(y_train, y_test, is_debug):
 	y_train = one_hot(y_train)

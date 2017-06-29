@@ -1,10 +1,13 @@
 data/*
 batch_data/*
+predictions/*
 .DS_Store
 model.ckpt
 bnn/__pycache__
 *.zip
 *.ckpt
+.ipynb_checkpoints/*
 
 !batch_data/.keep_me
 !data/.keep_me
+!predictions/.keep_me

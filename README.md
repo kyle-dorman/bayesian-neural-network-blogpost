@@ -89,15 +89,16 @@ def montecarlo_prediction(model, X_data, T):
 	predictions = np.array([model.predict(X_data) for _ in range(T)])
 
 	# shape: (N, C)
-	prediction_means = np.mean(predictions, axis=0)
+	prediction_probabilities = np.mean(predictions, axis=0)
 	
 	# shape: (N)
-	prediction_variances = np.apply_along_axis(predictive_entropy, axis=1, arr=prediction_means)
-	return (prediction_means, prediction_variances)
+	prediction_variances = np.apply_along_axis(predictive_entropy, axis=1, arr=prediction_probabilities)
+	return (prediction_probabilities, prediction_variances)
 
-# prob - mean probability for each class(C)
+# prob - prediction probability for each class(C). Shape: (N, C)
+# returns - Shape: (N)
 def predictive_entropy(prob):
-	return -1 * np.sum(np.log(prob) * prob)
+	return -1 * np.sum(np.log(prob) * prob, axis=1)
 ```
 Note: Epistemic uncertainty is not used to train the model. It is only calculated at test time when evaluating test/real world examples. Where as aleatoric is part of the training process.
 
