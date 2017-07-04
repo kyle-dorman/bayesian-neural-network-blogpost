@@ -49,14 +49,14 @@ def test_train_data(dataset, min_image_size, is_debug, batch_size=32):
 
 def test_train_batch_data(dataset, encoder, is_debug):
 	if dataset == 'cifar10':
-		(_, y_train), (_, y_test) = cifar10.load_data()
-		(y_train, y_test) = clean_label_dataset(y_train, y_test, is_debug)
 		config = BatchConfig(encoder, dataset)
-		x_train = open_pickle_file(config.batch_folder() + "/train.p")
-		x_test = open_pickle_file(config.batch_folder() + "/test.p")
+		x_train, y_train = open_pickle_file(config.batch_folder() + "/train.p")
+		x_test, y_test = open_pickle_file(config.batch_folder() + "/test.p")
 		if is_debug:
 			x_train = x_train[0:128]
 			x_test = x_test[0:128]
+			y_train = y_train[0:128]
+			y_test = y_test[0:128]
 		return ((x_train, y_train), (x_test, y_test))
 	# todo: add more datasets
 	else:
@@ -82,7 +82,7 @@ class ResizeGenerator():
 			self.index = 0
 		else:
 			self.index += self.batch_size
-			
+
 		return result 
 
 
