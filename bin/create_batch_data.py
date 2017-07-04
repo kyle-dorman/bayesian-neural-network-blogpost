@@ -31,7 +31,7 @@ def main(_):
 
 	min_image_size = encoder_min_input_size(FLAGS.encoder)
 	
-	((x_train, _), (x_test, _)) = test_train_data(FLAGS.dataset, min_image_size, FLAGS.debug)
+	((x_train, y_train), (x_test, y_test)) = test_train_data(FLAGS.dataset, min_image_size, FLAGS.debug, FLAGS.batch_size)
 
 	input_shape = list(min_image_size)
 	input_shape.append(3)
@@ -42,21 +42,21 @@ def main(_):
 	encoder.compile(optimizer='sgd', loss='mean_squared_error')
 
 	print("Encoding training data.")
-	x_train_encoded = encoder.predict(x_train,
-		verbose=FLAGS.verbose,
-		batch_size=FLAGS.batch_size)
+	x_train_encoded = encoder.predict_generator(x_train,
+		1, #int(len(y_train)/FLAGS.batch_size) - 1,
+		verbose=FLAGS.verbose)
 
 	print("Encoding test data.")
-	x_test_encoded = encoder.predict(x_test,
-		verbose=FLAGS.verbose,
-		batch_size=FLAGS.batch_size)
+	x_test_encoded = encoder.predict_generator(x_test,
+		1, #len(y_test)//FLAGS.batch_size - 1,
+		verbose=FLAGS.verbose)
 
 	print("Finished encoding data.")
 
 	train_file = config.batch_folder() + "/train.p"
 	test_file = config.batch_folder() + "/test.p"
-	save_pickle_file(train_file, x_train_encoded)
-	save_pickle_file(test_file, x_test_encoded)
+	save_pickle_file(train_file, (x_train_encoded, y_train))
+	save_pickle_file(test_file, (x_test_encoded, y_test))
 
 	if isAWS() and FLAGS.debug == False:
 		upload_s3(train_file)

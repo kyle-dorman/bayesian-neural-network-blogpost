@@ -20,7 +20,7 @@ def get_traffic_sign_data():
 
   return ((train['features'], train['labels']), (test['features'], test['labels']), (valid['features'], valid['labels']))
 
-def test_train_data(dataset, min_image_size, is_debug):
+def test_train_data(dataset, min_image_size, is_debug, batch_size=32):
 	if dataset == 'cifar10':
 		(x_train, y_train), (x_test, y_test) = cifar10.load_data()
 
@@ -38,8 +38,10 @@ def test_train_data(dataset, min_image_size, is_debug):
 		y_train = np.concatenate([y_train, augment_labels_train])
 		y_test = np.concatenate([y_test, augment_labels_test])
 
-		(x_train, x_test) = clean_feature_dataset(x_train, x_test, min_image_size, is_debug)
-		(y_train, y_test) = clean_label_dataset(y_train, y_test, is_debug)
+		x_train = ResizeGenerator(x_train, batch_size, min_image_size)
+		x_test = ResizeGenerator(x_test, batch_size, min_image_size)
+
+		(y_train, y_test) = clean_label_dataset(y_train, y_test, False)
 		return ((x_train, y_train), (x_test, y_test))
 	# todo: add more datasets
 	else:
@@ -59,6 +61,30 @@ def test_train_batch_data(dataset, encoder, is_debug):
 	# todo: add more datasets
 	else:
 		raise ValueError("Unexpected dataset " + dataset + ".")
+
+
+class ResizeGenerator():
+	def __init__(self, data, batch_size, image_size):
+		self.data = data
+		self.batch_size = batch_size
+		self.image_size = image_size
+		self.index = 0
+
+	def __next__(self):
+		return self.next()
+
+	def next(self):
+		start = self.index
+		end = min(self.index+self.batch_size, len(self.data))
+		result = preprocess_input(np.array([cv2.resize(i, self.image_size) for i in self.data[start:end]], dtype=np.float64))
+
+		if end == len(self.data):
+			self.index = 0
+		else:
+			self.index += self.batch_size
+			
+		return result 
+
 
 def clean_feature_dataset(x_train, x_test, min_image_size, is_debug):
 	print("Resizing images from", x_train.shape[1:-1], "to", min_image_size)
