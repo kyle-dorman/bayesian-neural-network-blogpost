@@ -54,15 +54,19 @@ def categorical_cross_entropy(true, pred):
 # N data points, C classes, T monte carlo simulations
 # true - true values. Shape: (N, C)
 # pred_var - predicted logit values and variance. Shape: (N, C + 1)
-# returns - loss (N, C)
+# returns - loss (N)
 def bayesian_categorical_crossentropy(T, num_classes):
 	def bayesian_categorical_crossentropy_internal(true, pred_var):
-		std = K.sqrt(pred_var[:, num_classes:])
+		# shape: [N, 1]
+		std_vals = K.sqrt(pred_var[:, num_classes:])
+		# shape: [N, C]
+		std = true * std_vals
 		pred = pred_var[:, 0:num_classes]
 		iterable = K.variable(np.ones(T))
 		dist = distributions.Normal(loc=K.zeros_like(std), scale=std)
-		monte_carlo_results = K.map_fn(gaussian_categorical_crossentropy(true, pred, dist, num_classes), iterable, name='monte_carlo_results')
-		return K.sum(monte_carlo_results, axis=0)
+		# Shape: (T, N)
+		monte_carlo_results = K.map_fn(gaussian_categorical_crossentropy(true, pred, dist), iterable, name='monte_carlo_results')
+		return K.mean(monte_carlo_results, axis=0)
 	return bayesian_categorical_crossentropy_internal
 
 # for a single monte carlo simulation, 
@@ -71,36 +75,13 @@ def bayesian_categorical_crossentropy(T, num_classes):
 #   noise vs true values.
 # true - true values. Shape: (N, C)
 # pred - predicted logit values. Shape: (N, C)
-# dist - normal distribution to sample from. Shape: (N)
-# num_classes - the number of classes(C)
-# returns - total differences for all classes (N)
-def gaussian_categorical_crossentropy(true, pred, dist, num_classes):
+# dist - normal distribution to sample from. Shape: (N, C)
+# returns - categorical_crossentropy for each sample (N)
+def gaussian_categorical_crossentropy(true, pred, dist):
 	def map_fn(i):
-		std_samples = dist.sample(num_classes)
-		std_samples = K.transpose(K.reshape(std_samples, K.shape(std_samples)[0:-1]))
-		predictions = pred + std_samples
-		return K.categorical_crossentropy(predictions, true, from_logits=True)
+		return K.categorical_crossentropy(pred + dist.sample(1), true, from_logits=True)
 	return map_fn
 
-def test_bayesian_categorical_crossentropy():
-	true = K.variable(np.array([[1.,0.],[1.,0.],[1.,0.],[1.,0.],[1.,0.],[1.,0.]]))
-	pred_var = K.variable(np.array([
-		# corect class (larger difference), low variance, expect low loss
-		[10.,1.,1.],
-		# correct class (large difference), high variance, expect slightly higher loss
-		[10.,1.,5.],
-		# incorrect class (large difference), low variance, expect high loss
-		[1.,10.,1.],
-		# incorrect class (large difference), low variance, expect high loss
-		[1.,10.,3.],
-		# incorrect class (large difference), high variance, expect slightly lower loss
-		[1.,10.,5.],
-		# incorrect class (small difference), low variance, expect mid los 
-		[9.,10.,.1],
-		# incorrect class (small difference), high variance, expect slightly lower loss
-		[9.,10.,1.]
-		]))
-	print(K.eval(bayesian_categorical_crossentropy(100, 2)(true, pred_var)))
     
 class MonteCarloTestModel:
 	def __init__(self, C):

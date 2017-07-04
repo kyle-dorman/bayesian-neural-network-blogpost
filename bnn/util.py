@@ -18,6 +18,7 @@ def full_path(name):
 
 # Save and fetch data and saved models from S3. Useful for working between AWS and local machine.
 
+# TODO: change these to command line inputs.
 bucket_name = 'kd-carnd'
 key_name = 'bayesian-neural-network-blogpost/'
 region_name = 'us-east-2'

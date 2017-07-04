@@ -21,26 +21,30 @@ def load_testable_model(encoder, config, monte_carlo_simulations, num_classes, m
 	else:
 		model = load_baysean_model(config.model_file())
 
-	return model    
+	return model   
+
+
+def load_testable_epistemic_uncertainty_model(full_model, min_image_size, config, epistemic_monte_carlo_simulations):
+	if full_model:
+		model = load_full_epistemic_uncertainty_model(config.encoder, (), config.model_file(), epistemic_monte_carlo_simulations)
+	else:
+		model = load_epistemic_uncertainty_model(config.model_file(), epistemic_monte_carlo_simulations)
+
+	# the model won't be used for training
+	model.compile('adam', 'categorical_crossentropy')
+	return model
 
 
 def predict_epistemic_uncertainties(batch_size, verbose, epistemic_monte_carlo_simulations, debug, full_model,
+	x_train, y_train, x_test, y_test,
 	encoder, dataset, model_batch_size, model_epochs, model_monte_carlo_simulations):
 	# set learning phase to 1 so that Dropout is on. In keras master you can set this
 	# on the TimeDistributed layer
 	K.set_learning_phase(1)
-
 	min_image_size = encoder_min_input_size(encoder)
-	if full_model:
-		raise ValueError("Loading full epistemic model not supported yet.")
-		#((x_train, _), (x_test, _)) = test_train_data(dataset, min_image_size[0:2], debug)
-	else:
-		((x_train, _), (x_test, _)) = test_train_batch_data(dataset, encoder, debug)
 
 	config = BayesianConfig(encoder, dataset, model_batch_size, model_epochs, model_monte_carlo_simulations)
-	epistemic_model = load_epistemic_uncertainty_model(config.model_file(), epistemic_monte_carlo_simulations)
-	# the model won't be used for training
-	epistemic_model.compile('adam', 'categorical_crossentropy')
+	epistemic_model = load_testable_epistemic_uncertainty_model(full_model, min_image_size, config.model_file(), epistemic_monte_carlo_simulations)
 
 	# Shape (N)
 	print("Predicting epistemic_uncertainties.")
@@ -51,14 +55,13 @@ def predict_epistemic_uncertainties(batch_size, verbose, epistemic_monte_carlo_s
 
 
 def predict_softmax_aleatoric_uncertainties(batch_size, verbose, debug, full_model,
+	x_train, y_train, x_test, y_test,
 	encoder, dataset, model_batch_size, model_epochs, model_monte_carlo_simulations):
-	min_image_size = encoder_min_input_size(encoder)
-	if full_model:
-		((x_train, y_train), (x_test, y_test)) = test_train_data(dataset, min_image_size[0:2], debug)
-	else:
-		((x_train, y_train), (x_test, y_test)) = test_train_batch_data(dataset, encoder, debug)
 
 	num_classes = len(y_train[0])
+	min_image_size = encoder_min_input_size(encoder)
+	min_image_size = list(min_image_size)
+	min_image_size.append(3)
 	config = BayesianConfig(encoder, dataset, model_batch_size, model_epochs, model_monte_carlo_simulations)
 	model = load_testable_model(encoder, config, model_monte_carlo_simulations, num_classes, min_image_size, full_model)
 
@@ -69,6 +72,9 @@ def predict_softmax_aleatoric_uncertainties(batch_size, verbose, debug, full_mod
 	# Shape (N)
 	aleatoric_uncertainties_train = np.reshape(predictions_train[0][:,num_classes:], (-1))
 	aleatoric_uncertainties_test = np.reshape(predictions_test[0][:,num_classes:], (-1))
+
+	logits_train = predictions_train[0][:,0:num_classes]
+	logits_test = predictions_test[0][:,0:num_classes]
 	
 	# Shape (N, C)
 	softmax_train = predictions_train[1]
@@ -85,7 +91,9 @@ def predict_softmax_aleatoric_uncertainties(batch_size, verbose, debug, full_mod
 	train_results = [{
 		'softmax_raw':softmax_train[i],
 		'softmax':p_train[i],
-		'label':y_train[i],
+		'logits_raw': logits_train[i],
+		'label': np.argmax(y_train[i]),
+		'label_expanded':y_train[i],
 		'aleatoric_uncertainty':aleatoric_uncertainties_train[i],
 		'is_correct':prediction_comparision_train[i]
 		} for i in range(len(prediction_comparision_train))]
@@ -93,10 +101,35 @@ def predict_softmax_aleatoric_uncertainties(batch_size, verbose, debug, full_mod
 	test_results = [{
 		'softmax_raw':softmax_test[i],
 		'softmax':p_test[i],
-		'label':y_test[i],
+		'logits_raw': logits_test[i],
+		'label': np.argmax(y_test[i]),
+		'label_expanded':y_test[i],
 		'aleatoric_uncertainty':aleatoric_uncertainties_test[i],
 		'is_correct':prediction_comparision_test[i]
 		} for i in range(len(prediction_comparision_test))]
+
+	return (train_results, test_results)
+
+def predict_on_data(batch_size, verbose, epistemic_monte_carlo_simulations, debug, full_model,
+	x_train, y_train, x_test, y_test,
+	encoder, dataset, model_batch_size, model_epochs, model_monte_carlo_simulations, include_epistemic_uncertainty=True):
+
+	(train_results, test_results) = predict_softmax_aleatoric_uncertainties(batch_size, verbose, debug, full_model, 
+		x_train, y_train, x_test, y_test,
+		encoder, dataset, model_batch_size, model_epochs, model_monte_carlo_simulations)
+
+	# epistemic_uncertainty takes a long time to predict
+	if include_epistemic_uncertainty:
+		(epistemic_uncertainties_train, epistemic_uncertainties_test) = predict_epistemic_uncertainties(
+			batch_size, verbose, epistemic_monte_carlo_simulations, debug, full_model, 
+			x_train, y_train, x_test, y_test,
+			encoder, dataset, model_batch_size, model_epochs, model_monte_carlo_simulations)
+
+		for i in range(len(epistemic_uncertainties_train)):
+			train_results[i]['epistemic_uncertainty'] = epistemic_uncertainties_train[i]
+
+		for i in range(len(epistemic_uncertainties_test)):
+			test_results[i]['epistemic_uncertainty'] = epistemic_uncertainties_test[i]
 
 	return (train_results, test_results)
 
@@ -104,17 +137,14 @@ def predict_softmax_aleatoric_uncertainties(batch_size, verbose, debug, full_mod
 def predict(batch_size, verbose, epistemic_monte_carlo_simulations, debug, full_model,
 	encoder, dataset, model_batch_size, model_epochs, model_monte_carlo_simulations):
 
-	(train_results, test_results) = predict_softmax_aleatoric_uncertainties(batch_size, verbose, 
-		debug, full_model, encoder, dataset, model_batch_size, model_epochs, model_monte_carlo_simulations)
+	min_image_size = encoder_min_input_size(encoder)
+	if full_model:
+		((x_train, y_train), (x_test, y_test)) = test_train_data(dataset, min_image_size[0:2], debug)
+	else:
+		((x_train, y_train), (x_test, y_test)) = test_train_batch_data(dataset, encoder, debug)
 
-	(epistemic_uncertainties_train, epistemic_uncertainties_test) = predict_epistemic_uncertainties(batch_size, verbose, 
-		epistemic_monte_carlo_simulations, debug, full_model, 
+	return predict_on_data(batch_size, verbose, epistemic_monte_carlo_simulations, debug, full_model,
+		x_train, y_train, x_test, y_test,
 		encoder, dataset, model_batch_size, model_epochs, model_monte_carlo_simulations)
 
-	for i in range(len(epistemic_uncertainties_train)):
-		train_results[i]['epistemic_uncertainty'] = epistemic_uncertainties_train[i]
 
-	for i in range(len(epistemic_uncertainties_test)):
-		test_results[i]['epistemic_uncertainty'] = epistemic_uncertainties_test[i]
-
-	return (train_results, test_results)

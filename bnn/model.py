@@ -46,15 +46,15 @@ class PredictiveEntropy(Layer):
 		return -1 * K.sum(K.log(x) * x, axis=1)
 
 
-def load_full_model(model_name, checkpoint, input_shape):
-	encoder = create_encoder_model(model_name, input_shape)
+def load_full_model(encoder, checkpoint, input_shape):
+	encoder_model = create_encoder_model(encoder, input_shape)
 	baysean_model = load_baysean_model(checkpoint)
-	outputs = baysean_model(encoder.outputs)
+	outputs = baysean_model(encoder_model.outputs)
 	# hack to rename outputs
 	logits_variance = Lambda(lambda x: x, name='logits_variance')(outputs[0])
 	softmax_output = Lambda(lambda x: x, name='softmax_output')(outputs[1])
 
-	return Model(inputs=encoder.inputs, outputs=[logits_variance, softmax_output])
+	return Model(inputs=encoder_model.inputs, outputs=[logits_variance, softmax_output])
 
 
 def load_baysean_model(checkpoint, monte_carlo_simulations=100, classes=10):
@@ -78,9 +78,17 @@ def load_epistemic_uncertainty_model(checkpoint, epistemic_monte_carlo_simulatio
 	return epistemic_model
 
 
-def create_baysean_model(model_name, input_shape, output_classes):
-	encoder = create_encoder_model(model_name, input_shape)
-	input_tensor = Input(shape=encoder.output_shape[1:])
+def load_full_epistemic_uncertainty_model(encoder, input_shape, checkpoint, epistemic_monte_carlo_simulations):
+	encoder_model = create_encoder_model(encoder, input_shape)
+	baysean_model = load_epistemic_uncertainty_model(checkpoint, epistemic_monte_carlo_simulations)
+	outputs = baysean_model(encoder_model.outputs)
+
+	return Model(inputs=encoder_model.inputs, outputs=outputs)
+
+
+def create_baysean_model(encoder, input_shape, output_classes):
+	encoder_model = create_encoder_model(encoder, input_shape)
+	input_tensor = Input(shape=encoder_model.output_shape[1:])
 	x = BatchNormalization(name='post_encoder')(input_tensor)
 	x = Dropout(0.5)(x)
 	x = Dense(500, activation='relu')(x)
@@ -90,7 +98,8 @@ def create_baysean_model(model_name, input_shape, output_classes):
 	x = BatchNormalization()(x)
 	x = Dropout(0.5)(x)
 	logits = Dense(output_classes, name='logits')(x)
-	variance_pre = Dense(1, name='variance_pre')(x)
+	x_logits = concatenate([x, logits])
+	variance_pre = Dense(1, name='variance_pre')(x_logits)
 	variance = Activation('softplus', name='variance')(variance_pre)
 	logits_variance = concatenate([logits, variance], name='logits_variance')
 	softmax_output = Activation('softmax', name='softmax_output')(logits)
@@ -100,13 +109,13 @@ def create_baysean_model(model_name, input_shape, output_classes):
 	return model
 
 
-def create_encoder_model(model_name, input_shape):
+def create_encoder_model(encoder, input_shape):
 	input_tensor = Input(shape=input_shape)
 
-	if model_name == 'resnet50':
+	if encoder == 'resnet50':
 		base_model = ResNet50(include_top=False, input_tensor=input_tensor)
 	else:
-		raise ValueError('Unexpected encoder model ' + model_name + ".")
+		raise ValueError('Unexpected encoder model ' + encoder + ".")
 
 	# freeze encoder layers to prevent over fitting
 	for layer in base_model.layers:
@@ -118,9 +127,9 @@ def create_encoder_model(model_name, input_shape):
 	return model
 		
 
-def encoder_min_input_size(model_name):
-	if model_name == 'resnet50':
+def encoder_min_input_size(encoder):
+	if encoder == 'resnet50':
 		return (197, 197)
 	else:
-		raise ValueError('Unexpected encoder model ' + model_name + ".")
+		raise ValueError('Unexpected encoder model ' + encoder + ".")
 
