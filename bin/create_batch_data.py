@@ -43,12 +43,12 @@ def main(_):
 
 	print("Encoding training data.")
 	x_train_encoded = encoder.predict_generator(x_train,
-		1, #int(len(y_train)/FLAGS.batch_size) - 1,
+		int(len(y_train)/FLAGS.batch_size),
 		verbose=FLAGS.verbose)
 
 	print("Encoding test data.")
 	x_test_encoded = encoder.predict_generator(x_test,
-		1, #len(y_test)//FLAGS.batch_size - 1,
+		len(y_test)//FLAGS.batch_size,
 		verbose=FLAGS.verbose)
 
 	print("Finished encoding data.")
