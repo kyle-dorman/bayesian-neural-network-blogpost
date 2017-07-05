@@ -38,7 +38,9 @@ def main(_):
 		if os.path.isdir(full_path(folder)) == False:
 			os.mkdir(full_path(folder))
 
+	if isAWS() and FLAGS.debug == False:
 		save_pickle_file(folder + "/results.p", (train_results, test_results))
+		upload_s3(folder + "/results.p")
 
 if __name__ == '__main__':
 	tf.app.run()

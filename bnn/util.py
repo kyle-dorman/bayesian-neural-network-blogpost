@@ -143,6 +143,9 @@ class BatchConfig(object):
   def batch_folder(self):
     return "batch_data/{}_{}".format(self.encoder, self.dataset)
 
+  def predictions_folder(self):
+    return "predictions/{}_{}".format(self.encoder, self.dataset)
+
   def info(self):
     print("encoder:", self.encoder)
     print("dataset:", self.dataset)
