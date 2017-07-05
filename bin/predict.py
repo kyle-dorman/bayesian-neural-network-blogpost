@@ -8,7 +8,7 @@ sys.path.append(project_path)
 
 import tensorflow as tf
 from bnn.predict import predict
-from bnn.util import save_pickle_file, full_path
+from bnn.util import save_pickle_file, full_path, isAWS, upload_s3
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
