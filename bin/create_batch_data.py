@@ -58,10 +58,10 @@ def main(_):
 
 	if FLAGS.augment:
 		train_file_name = "/augment-train.p"
-		test_file_name = "/augment-test/p"
+		test_file_name = "/augment-test.p"
 	else:
 		train_file_name = "/train.p"
-		test_file_name = "/test/p"
+		test_file_name = "/test.p"
 
 	train_file = config.batch_folder() + train_file_name
 	test_file = config.batch_folder() + test_file_name
