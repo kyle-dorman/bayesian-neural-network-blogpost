@@ -49,13 +49,13 @@ def predict_epistemic_uncertainties(batch_size, verbose, epistemic_monte_carlo_s
 
 	# Shape (N)
 	print("Predicting epistemic_uncertainties.")
-	if isinstance(x_train, list):
-		epistemic_uncertainties_train = model.predict(x_train, batch_size=batch_size, verbose=verbose)[0]
-		epistemic_uncertainties_test = model.predict(x_test, batch_size=batch_size, verbose=verbose)[0]
+	if hasattr(x_train, 'shape'):
+		epistemic_uncertainties_train = epistemic_model.predict(x_train, batch_size=batch_size, verbose=verbose)[0]
+		epistemic_uncertainties_test = epistemic_model.predict(x_test, batch_size=batch_size, verbose=verbose)[0]
 	else:
 		# generator
-		epistemic_uncertainties_train = model.predict_generator(x_train, int(math.ceil(len(y_train/batch_size))), verbose=verbose)[0]
-		epistemic_uncertainties_test = model.predict_generator(x_test, int(math.ceil(len(y_test/batch_size))), verbose=verbose)[0]
+		epistemic_uncertainties_train = epistemic_model.predict_generator(x_train, int(math.ceil(len(y_train/batch_size))), verbose=verbose)[0]
+		epistemic_uncertainties_test = epistemic_model.predict_generator(x_test, int(math.ceil(len(y_test/batch_size))), verbose=verbose)[0]
 	
 	return (epistemic_uncertainties_train, epistemic_uncertainties_test)
 
@@ -72,7 +72,7 @@ def predict_softmax_aleatoric_uncertainties(batch_size, verbose, debug, full_mod
 	model = load_testable_model(encoder, config, model_monte_carlo_simulations, num_classes, min_image_size, full_model)
 
 	print("Predicting softmax and aleatoric_uncertainties.")
-	if isinstance(x_train, list):
+	if hasattr(x_train, 'shape'):
 		predictions_train = model.predict(x_train, batch_size=batch_size, verbose=verbose)
 		predictions_test = model.predict(x_test, batch_size=batch_size, verbose=verbose)	
 	else:
