@@ -225,11 +225,33 @@ def predict():
 
 Note: Epistemic uncertainty is not used to train the model. It is only calculated at test time (but during a training phase) when evaluating test/real world examples. Where as aleatoric is part of the training process.
 
-### Code
-Besides the training code above, predicting uncertainty doesn't require much additional code beyond the normal code used to train a classifier. For this experiment, I used the convolutional layers of ResNet50 frozen to the weights for [ImageNet](http://www.image-net.org/) and added 3 additional sets of `BatchNormalization`, `Dropout`, `Dense`, and `relu` layers on top of the ResNet50 output. I initally attempted to train the model without freezing the convolutional layers but found the model became overfit very quickly. After deciding to freeze the convolutional layers, I wrote a script that computes and saves the outputs of the encoder network which makes working with the smaller dataset extremly easy on my Mac. The variance and logits are predicted seperetly in the last layer so that it is easy to compute the softmax on just the logit values. An important note is the variance layer applies a `softplus` activation function to ensure the model always predicts variance values greater than zero. Predicting epistemic uncertainty does take a conisderably long amount of time. It takes about 2 seocnds on my Mac CPU for the fully connected layers part of the model to predict all 50000 classes for the training set but over five minutes for the epistemic uncertainty predictions. This isn't super suprising because epistemic uncertainty requires running T Monte Carlo simulations on each peice of data. I ran 100 simulations so I would have expected the epistemic uncertainty predictions to take ~200 seconds. The [repo](https://github.com/kyle-dorman/bayesian-neural-network-blogpost) is set up to easily switch out the underlying encoder network and train models for other datasets in the future. Feel free to play with it if you want a deeper dive. 
+### Training
+Besides the training code above, predicting uncertainty doesn't require much additional code beyond the normal code used to train a classifier. For this experiment, I froze the convolutional layers of ResNet50 with the weights for [ImageNet](http://www.image-net.org/) and added 3 additional sets of `BatchNormalization`, `Dropout`, `Dense`, and `relu` layers on top of the ResNet50 output. I initally attempted to train the model without freezing the convolutional layers but found the model became overfit very quickly. The logits were merged with the dense layer prior to the logits to predict the uncertainty. In this way I am hoping the undertainty is able to share the learnings from the final dense layer that predicts the logits. The uncertanty is predicted seperetly from the logits in the last layer so that it is easy to compute the softmax on just the logit values. An important note is the variance layer applies a `softplus` activation function to ensure the model always predicts variance values greater than zero. I used 100 Monte Carlo simulations for calculating the baysean loss function. I found increasing the number of Monte Carlo simulations from 100 to 1000 added about four minutes to my training time which didn't seem worth if for the blog post. 
+
+I augmented the training data by randomly applying a gamma value to increase or descrease the brightness of each image in the training set. In practice I found the cifar10 dataset did not have many images that would in theory exhibit high aleatoric uncertainty. By adding the lightness & darkness to images in the training set I am attempting to give the model more images with what shoudl be high aleatoric uncertianty to learn from. 
+
+![alt image][image4]
+
+Predicting epistemic uncertainty does take a conisderable long amount of time conpared to just computing the softmax output and the aleatoric uncertainty. It takes about 2 seocnds on my Mac CPU for the fully connected layers part of the model to predict all 50000 classes for the training set but over five minutes for the epistemic uncertainty predictions. This isn't super suprising because epistemic uncertainty requires running Monte Carlo simulations on each peice of data. I ran 100 simulations so I would have expected the epistemic uncertainty predictions to take ~200 seconds. 
+
+Lastly, The [repo](https://github.com/kyle-dorman/bayesian-neural-network-blogpost) is set up to easily switch out the underlying encoder network and train models for other datasets in the future. Feel free to play with it if you want a deeper dive. 
 
 ### Results
-I was pleasantly surprised with the prediction results from the test data. 92.5% is very respectable given I spent no time messing around with the hyper parameters. Getting highly accurate scores on these datasets is covered in many different ways and Baysean deep learning is about both the predictions and uncertainty so I will spend the rest of the post analyzing the uncertainty predictions. 
+I was pleasantly surprised with the prediction results from the test data. 92.5% is very respectable given I spent no time messing around with the hyper parameters. While getting highly accurate scores on this dataset is interesting, Baysean deep learning is about both the predictions and uncertainty so I will spend the rest of the post analyzing the uncertainty predictions.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ![alt image][image7]
 Figure 1: uncertainty mean and standard deviation for test set
