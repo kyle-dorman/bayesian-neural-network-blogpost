@@ -55,7 +55,7 @@ def test_train_batch_data(dataset, encoder, is_debug, augment_data=False):
 			test_file_name = "/test/p"
 		config = BatchConfig(encoder, dataset)
 		x_train, y_train = open_pickle_file(config.batch_folder() + train_file_name)
-		x_test, y_test = open_pickle_file(config.batch_folder() + train_file_name)
+		x_test, y_test = open_pickle_file(config.batch_folder() + test_file_name)
 		if is_debug:
 			x_train = x_train[0:256]
 			x_test = x_test[0:256]
