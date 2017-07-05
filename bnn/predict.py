@@ -3,6 +3,7 @@
 from keras.utils.generic_utils import get_custom_objects
 from keras import backend as K
 import numpy as np
+import math
 
 from bnn.model import load_baysean_model, load_full_model, encoder_min_input_size, load_epistemic_uncertainty_model
 from bnn.data import test_train_batch_data, test_train_data
@@ -44,12 +45,17 @@ def predict_epistemic_uncertainties(batch_size, verbose, epistemic_monte_carlo_s
 	min_image_size = encoder_min_input_size(encoder)
 
 	config = BayesianConfig(encoder, dataset, model_batch_size, model_epochs, model_monte_carlo_simulations)
-	epistemic_model = load_testable_epistemic_uncertainty_model(full_model, min_image_size, config.model_file(), epistemic_monte_carlo_simulations)
+	epistemic_model = load_testable_epistemic_uncertainty_model(full_model, min_image_size, config, epistemic_monte_carlo_simulations)
 
 	# Shape (N)
 	print("Predicting epistemic_uncertainties.")
-	epistemic_uncertainties_train = epistemic_model.predict(x_train, batch_size=batch_size, verbose=verbose)[0]
-	epistemic_uncertainties_test = epistemic_model.predict(x_test, batch_size=batch_size, verbose=verbose)[0]
+	if isinstance(x_train, list):
+		epistemic_uncertainties_train = model.predict(x_train, batch_size=batch_size, verbose=verbose)[0]
+		epistemic_uncertainties_test = model.predict(x_test, batch_size=batch_size, verbose=verbose)[0]
+	else:
+		# generator
+		epistemic_uncertainties_train = model.predict_generator(x_train, int(math.ceil(len(y_train/batch_size))), verbose=verbose)[0]
+		epistemic_uncertainties_test = model.predict_generator(x_test, int(math.ceil(len(y_test/batch_size))), verbose=verbose)[0]
 	
 	return (epistemic_uncertainties_train, epistemic_uncertainties_test)
 
@@ -66,9 +72,14 @@ def predict_softmax_aleatoric_uncertainties(batch_size, verbose, debug, full_mod
 	model = load_testable_model(encoder, config, model_monte_carlo_simulations, num_classes, min_image_size, full_model)
 
 	print("Predicting softmax and aleatoric_uncertainties.")
-	predictions_train = model.predict(x_train, batch_size=batch_size, verbose=verbose)
-	predictions_test = model.predict(x_test, batch_size=batch_size, verbose=verbose)	
-	
+	if isinstance(x_train, list):
+		predictions_train = model.predict(x_train, batch_size=batch_size, verbose=verbose)
+		predictions_test = model.predict(x_test, batch_size=batch_size, verbose=verbose)	
+	else:
+		# generator
+		predictions_train = model.predict_generator(x_train, int(math.ceil(len(y_train/batch_size))), verbose=verbose)
+		predictions_test = model.predict_generator(x_test, int(math.ceil(len(y_test/batch_size))), verbose=verbose)	
+
 	# Shape (N)
 	aleatoric_uncertainties_train = np.reshape(predictions_train[0][:,num_classes:], (-1))
 	aleatoric_uncertainties_test = np.reshape(predictions_test[0][:,num_classes:], (-1))
@@ -139,7 +150,8 @@ def predict(batch_size, verbose, epistemic_monte_carlo_simulations, debug, full_
 
 	min_image_size = encoder_min_input_size(encoder)
 	if full_model:
-		((x_train, y_train), (x_test, y_test)) = test_train_data(dataset, min_image_size[0:2], debug)
+		((x_train, y_train), (x_test, y_test)) = test_train_data(dataset, min_image_size[0:2], 
+			debug, augment_data=False, batch_size=batch_size)
 	else:
 		((x_train, y_train), (x_test, y_test)) = test_train_batch_data(dataset, encoder, debug)
 

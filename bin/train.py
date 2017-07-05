@@ -36,7 +36,7 @@ def main(_):
 
 	min_image_size = encoder_min_input_size(FLAGS.encoder)
 	
-	((x_train, y_train), (x_test, y_test)) = test_train_batch_data(FLAGS.dataset, FLAGS.encoder, FLAGS.debug)
+	((x_train, y_train), (x_test, y_test)) = test_train_batch_data(FLAGS.dataset, FLAGS.encoder, FLAGS.debug, augment_data=True)
 
 	min_image_size = list(min_image_size)
 	min_image_size.append(3)
