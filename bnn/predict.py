@@ -5,7 +5,7 @@ from keras import backend as K
 import numpy as np
 import math
 
-from bnn.model import load_baysean_model, load_full_model, encoder_min_input_size, load_epistemic_uncertainty_model
+from bnn.model import load_baysean_model, load_full_model, encoder_min_input_size, load_epistemic_uncertainty_model, load_full_epistemic_uncertainty_model
 from bnn.data import test_train_batch_data, test_train_data
 from bnn.util import BayesianConfig
 from bnn.loss_equations import bayesian_categorical_crossentropy
@@ -27,7 +27,7 @@ def load_testable_model(encoder, config, monte_carlo_simulations, num_classes, m
 
 def load_testable_epistemic_uncertainty_model(full_model, min_image_size, config, epistemic_monte_carlo_simulations):
 	if full_model:
-		model = load_full_epistemic_uncertainty_model(config.encoder, (), config.model_file(), epistemic_monte_carlo_simulations)
+		model = load_full_epistemic_uncertainty_model(config.encoder, min_image_size, config.model_file(), epistemic_monte_carlo_simulations)
 	else:
 		model = load_epistemic_uncertainty_model(config.model_file(), epistemic_monte_carlo_simulations)
 
@@ -42,7 +42,8 @@ def predict_epistemic_uncertainties(batch_size, verbose, epistemic_monte_carlo_s
 	# set learning phase to 1 so that Dropout is on. In keras master you can set this
 	# on the TimeDistributed layer
 	K.set_learning_phase(1)
-	min_image_size = encoder_min_input_size(encoder)
+	min_image_size = list(encoder_min_input_size(encoder))
+	min_image_size.append(3)
 
 	config = BayesianConfig(encoder, dataset, model_batch_size, model_epochs, model_monte_carlo_simulations)
 	epistemic_model = load_testable_epistemic_uncertainty_model(full_model, min_image_size, config, epistemic_monte_carlo_simulations)
@@ -125,10 +126,6 @@ def predict_on_data(batch_size, verbose, epistemic_monte_carlo_simulations, debu
 	x_train, y_train, x_test, y_test,
 	encoder, dataset, model_batch_size, model_epochs, model_monte_carlo_simulations, include_epistemic_uncertainty=True):
 
-	(train_results, test_results) = predict_softmax_aleatoric_uncertainties(batch_size, verbose, debug, full_model, 
-		x_train, y_train, x_test, y_test,
-		encoder, dataset, model_batch_size, model_epochs, model_monte_carlo_simulations)
-
 	# epistemic_uncertainty takes a long time to predict
 	if include_epistemic_uncertainty:
 		(epistemic_uncertainties_train, epistemic_uncertainties_test) = predict_epistemic_uncertainties(
@@ -136,6 +133,11 @@ def predict_on_data(batch_size, verbose, epistemic_monte_carlo_simulations, debu
 			x_train, y_train, x_test, y_test,
 			encoder, dataset, model_batch_size, model_epochs, model_monte_carlo_simulations)
 
+	(train_results, test_results) = predict_softmax_aleatoric_uncertainties(batch_size, verbose, debug, full_model, 
+		x_train, y_train, x_test, y_test,
+		encoder, dataset, model_batch_size, model_epochs, model_monte_carlo_simulations)
+
+	if include_epistemic_uncertainty:
 		for i in range(len(epistemic_uncertainties_train)):
 			train_results[i]['epistemic_uncertainty'] = epistemic_uncertainties_train[i]
 

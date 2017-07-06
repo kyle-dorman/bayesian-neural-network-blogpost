@@ -26,8 +26,8 @@ flags.DEFINE_integer('batch_size', 32, 'The batch size for the generator')
 flags.DEFINE_boolean('debug', False, 'If this is for debugging the model/training process or not.')
 flags.DEFINE_integer('verbose', 0, 'Whether to use verbose logging when constructing the data object.')
 flags.DEFINE_boolean('stop', True, 'Stop aws instance after finished running.')
-flags.DEFINE_float('min_delta', 0.5, 'Early stopping minimum change value.')
-flags.DEFINE_integer('patience', 10, 'Early stopping epochs patience to wait before stopping.')
+flags.DEFINE_float('min_delta', 0.005, 'Early stopping minimum change value.')
+flags.DEFINE_integer('patience', 20, 'Early stopping epochs patience to wait before stopping.')
 
 
 def main(_):
@@ -56,7 +56,7 @@ def main(_):
 
 	print("Compiling model.")
 	model.compile(
-		optimizer=Adam(lr=1e-4), 
+		optimizer=Adam(lr=1e-4, decay=0.01),
 		loss={'logits_variance': bayesian_categorical_crossentropy(FLAGS.monte_carlo_simulations, num_classes)},
 		metrics={'softmax_output': ['categorical_accuracy', 'top_k_categorical_accuracy']})
 

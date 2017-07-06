@@ -19,7 +19,7 @@
 [image11]: ./blog_images/test_first_second_test_stats.png "Stats by correct label logit position"
 
 ### Intro
-In this blog post I will go over how to train a neural network classifier using [Keras](https://keras.io/) and [tensorflow](https://www.tensorflow.org/) to not only predict an outcome variable but also how confident the model is in its prediction using Bayesian deep learning techniques. I will first explain what uncertainty is and why it is important. I will then explian what baysean deep learning is and cover two techniques for including uncertainty in a deep learning model. To demonstrate my results I will use Keras to train dense layers over a frozen [ResNet50](https://arxiv.org/abs/1512.03385) encoder on the [cifar10](https://www.cs.toronto.edu/~kriz/cifar.html) dataset. Using less than 200 epochs and a custom loss object, I was able to train my model to score 92.5% on the training set, good for 14th place in the cifar10 [standings](http://rodrigob.github.io/are_we_there_yet/build/classification_datasets_results.html#43494641522d3130). Lastly, I will do a deep dive into the uncertainty predictions of my model and suggest next steps.
+In this blog post I will go over how to train a neural network classifier using [Keras](https://keras.io/) and [tensorflow](https://www.tensorflow.org/) to not only predict an outcome variable but also how confident the model is in its prediction using Bayesian deep learning techniques. I will first explain what uncertainty is and why it is important. I will then explian what baysean deep learning is and cover two techniques for including uncertainty in a deep learning model. To demonstrate my results I will use Keras to train dense layers over a frozen [ResNet50](https://arxiv.org/abs/1512.03385) encoder on the [cifar10](https://www.cs.toronto.edu/~kriz/cifar.html) dataset. Using less than 200 epochs and a custom loss object, I was able to train my model to score 92.3% on the training set, good for 14th place in the cifar10 [standings](http://rodrigob.github.io/are_we_there_yet/build/classification_datasets_results.html#43494641522d3130). Lastly, I will do a deep dive into the uncertainty predictions of my model and suggest next steps.
 
 ![alt image][image3]
 Figure 1: example of each class in cifar10
@@ -237,7 +237,7 @@ Predicting epistemic uncertainty does take a conisderable long amount of time co
 Lastly, The [repo](https://github.com/kyle-dorman/bayesian-neural-network-blogpost) is set up to easily switch out the underlying encoder network and train models for other datasets in the future. Feel free to play with it if you want a deeper dive. 
 
 ### Results
-I was pleasantly surprised with the prediction results from the test data. 92.5% is very respectable given I spent no time messing around with the hyper parameters. While getting highly accurate scores on this dataset is interesting, Baysean deep learning is about both the predictions and uncertainty so I will spend the rest of the post analyzing the uncertainty predictions.
+I was pleasantly surprised with the prediction results from the test data. 92.3% is very respectable given I spent no time messing around with the hyper parameters. While getting highly accurate scores on this dataset is interesting, Baysean deep learning is about both the predictions and uncertainty so I will spend the rest of the post analyzing the uncertainty predictions.
 
 
 
