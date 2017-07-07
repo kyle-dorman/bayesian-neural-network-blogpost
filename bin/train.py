@@ -55,7 +55,7 @@ def main(_):
 
 	print("Compiling model.")
 	model.compile(
-		optimizer=Adam(lr=1e-4, decay=0.01),
+		optimizer=Adam(lr=1e-3, decay=0.01),
 		loss={'logits_variance': bayesian_categorical_crossentropy(FLAGS.monte_carlo_simulations, num_classes)},
 		metrics={'softmax_output': ['categorical_accuracy', 'top_k_categorical_accuracy']})
 

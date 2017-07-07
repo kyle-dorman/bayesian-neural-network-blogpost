@@ -69,7 +69,7 @@ def bayesian_categorical_crossentropy(T, num_classes):
     # shape: (N,)
     undistorted_loss = K.categorical_crossentropy(pred, true, from_logits=True)
     monte_carlo_results = K.map_fn(gaussian_categorical_crossentropy(true, pred, dist, undistorted_loss), iterable, name='monte_carlo_results')
-    return K.mean(monte_carlo_results, axis=0) * orig_loss + orig_loss + K.pow(K.log(variance), 3)
+    return K.mean(monte_carlo_results, axis=0) * undistorted_loss + undistorted_loss + K.pow(K.log(variance), 3)
   return bayesian_categorical_crossentropy_internal
 
 # for a single monte carlo simulation, 
