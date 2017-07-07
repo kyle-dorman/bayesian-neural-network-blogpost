@@ -102,8 +102,8 @@ def clean_feature_dataset(x_train, x_test, min_image_size, is_debug):
 # Randomly add gamma darkness/brightness to images to create bad examples
 # done at fixed gammas to speed up augmentation
 def augment_images(images, labels):
-	# gammas that significantly increase or decrease brightness
-	gammas = [0.5, 4.]
+	# gammas that increase & decrease brightness
+	gammas = [0.7, 2.]
 	gamma_images = [[] for _ in range(len(gammas))]
 
 	for i in range(len(images)):
