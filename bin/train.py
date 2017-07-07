@@ -29,7 +29,6 @@ flags.DEFINE_boolean('stop', True, 'Stop aws instance after finished running.')
 flags.DEFINE_float('min_delta', 0.005, 'Early stopping minimum change value.')
 flags.DEFINE_integer('patience', 20, 'Early stopping epochs patience to wait before stopping.')
 
-
 def main(_):
 	config = BayesianConfig(FLAGS.encoder, FLAGS.dataset, FLAGS.batch_size, FLAGS.epochs, FLAGS.monte_carlo_simulations)
 	config.info()
