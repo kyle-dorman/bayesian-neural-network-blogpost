@@ -1,6 +1,7 @@
 #!/bin/python 
 
 from keras.applications.resnet50 import ResNet50
+import numpy as np
 # from keras.applications.resnet50 import preprocess_input, decode_predictions
 from keras.models import Model, load_model
 from keras.layers import Dense, Input, Flatten, Dropout, Activation, Lambda, RepeatVector
@@ -97,9 +98,13 @@ def create_baysean_model(encoder, input_shape, output_classes):
 	x = Dense(100, activation='relu')(x)
 	x = BatchNormalization()(x)
 	x = Dropout(0.5)(x)
-	logits = Dense(output_classes, name='logits')(x)
-	x_logits = concatenate([x, logits])
-	variance_pre = Dense(1, name='variance_pre')(x_logits)
+
+	logits = Dense(output_classes)(x)
+	variance_pre = Dense(1)(x)
+
+	# logits_variance_pre = Dense(output_classes + 1, name='logits_variance_pre')(x)
+	# logits = extract_logits(logits_variance_pre, output_classes)
+	# variance_pre = extract_variance(logits_variance_pre)
 	variance = Activation('softplus', name='variance')(variance_pre)
 	logits_variance = concatenate([logits, variance], name='logits_variance')
 	softmax_output = Activation('softmax', name='softmax_output')(logits)
@@ -107,6 +112,27 @@ def create_baysean_model(encoder, input_shape, output_classes):
 	model = Model(inputs=input_tensor, outputs=[logits_variance,softmax_output])
 
 	return model
+
+def extract_last_row(shape, dtype=None):
+	extractor = np.zeros(shape)
+	extractor[-1][-1] = 0
+	return K.constant(extractor)
+
+def drop_last_row(shape, dtype=None):
+	extractor = np.zeros(shape)
+	for i in range(np.min(shape)):
+		extractor[i][i] = 1
+	return K.constant(extractor)
+
+def extract_variance(prev_layer):
+	layer = Dense(1, name='extract_variance', kernel_initializer=extract_last_row)
+	layer.trainable = False
+	return layer(prev_layer)
+
+def extract_logits(prev_layer, output_classes):
+	layer = Dense(output_classes, name='extract_logits', kernel_initializer=drop_last_row)
+	layer.trainable = False
+	return layer(prev_layer)
 
 
 def create_encoder_model(encoder, input_shape):

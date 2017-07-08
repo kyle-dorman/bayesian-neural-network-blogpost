@@ -9,6 +9,8 @@ sys.path.append(project_path)
 import tensorflow as tf
 from keras.optimizers import Adam
 from keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
+from keras import metrics
+import numpy as np
 
 from bnn.model import create_baysean_model, encoder_min_input_size
 from bnn.loss_equations import bayesian_categorical_crossentropy
@@ -56,16 +58,21 @@ def main(_):
 	print("Compiling model.")
 	model.compile(
 		optimizer=Adam(lr=1e-4),
-		loss={'logits_variance': bayesian_categorical_crossentropy(FLAGS.monte_carlo_simulations, num_classes)},
-		metrics={'softmax_output': ['categorical_accuracy', 'top_k_categorical_accuracy']})
+		loss={
+		'logits_variance': bayesian_categorical_crossentropy(FLAGS.monte_carlo_simulations, num_classes),
+		'softmax_output': 'categorical_crossentropy'
+		},
+		metrics={'softmax_output': metrics.categorical_accuracy},
+		loss_weights={'logits_variance': .5, 'softmax_output': 1.})
 
 	print("Starting model train process.")
-	model.fit(x_train, y_train, 
+	model.fit(x_train, 
+		{'logits_variance':y_train, 'softmax_output':y_train}, 
 		callbacks=callbacks,
 		verbose=FLAGS.verbose,
 		epochs=FLAGS.epochs,
 		batch_size=FLAGS.batch_size,
-		validation_data=(x_test, y_test))
+		validation_data=(x_test, {'logits_variance':y_test, 'softmax_output':y_test}))
 
 	print("Finished training model.")
 

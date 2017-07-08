@@ -57,8 +57,8 @@ def categorical_cross_entropy(true, pred):
 # returns - loss (N,)
 def bayesian_categorical_crossentropy(T, num_classes):
   def bayesian_categorical_crossentropy_internal(true, pred_var):
-    # shape: (N, C)
-    std = true * K.sqrt(pred_var[:, num_classes:])
+    # shape: (N,)
+    std = K.sqrt(pred_var[:, num_classes:])
     # shape: (N,)
     variance = pred_var[:, num_classes] + K.ones_like(pred_var[:, num_classes])
     # shape: (N, C)
@@ -68,8 +68,8 @@ def bayesian_categorical_crossentropy(T, num_classes):
     dist = distributions.Normal(loc=K.zeros_like(std), scale=std)
     # shape: (N,)
     undistorted_loss = K.categorical_crossentropy(pred, true, from_logits=True)
-    monte_carlo_results = K.map_fn(gaussian_categorical_crossentropy(true, pred, dist, undistorted_loss), iterable, name='monte_carlo_results')
-    return K.mean(monte_carlo_results, axis=0) * undistorted_loss + undistorted_loss + K.pow(K.log(variance), 3)
+    monte_carlo_results = K.map_fn(gaussian_categorical_crossentropy(true, pred, dist, undistorted_loss, num_classes), iterable, name='monte_carlo_results')
+    return K.mean(monte_carlo_results, axis=0) * undistorted_loss + K.pow(K.log(variance), 3)
   return bayesian_categorical_crossentropy_internal
 
 # for a single monte carlo simulation, 
@@ -81,9 +81,10 @@ def bayesian_categorical_crossentropy(T, num_classes):
 # dist - normal distribution to sample from. Shape: (N, C)
 # undistorted_loss - the crossentropy loss without variance distortion. Shape: (N,)
 # returns - total differences for all classes (N,)
-def gaussian_categorical_crossentropy(true, pred, dist, undistorted_loss):
+def gaussian_categorical_crossentropy(true, pred, dist, undistorted_loss, num_classes):
   def map_fn(i):
-    distorted_loss = K.categorical_crossentropy(pred + dist.sample(1), true, from_logits=True)
+    std_samples = K.transpose(dist.sample(num_classes))
+    distorted_loss = K.categorical_crossentropy(pred + std_samples, true, from_logits=True)
     diff = undistorted_loss - distorted_loss
     return -K.elu(diff)
   return map_fn
