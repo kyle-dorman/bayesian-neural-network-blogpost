@@ -155,7 +155,7 @@ def predict(batch_size, verbose, epistemic_monte_carlo_simulations, debug, full_
 		((x_train, y_train), (x_test, y_test)) = test_train_data(dataset, min_image_size[0:2], 
 			debug, augment_data=False, batch_size=batch_size)
 	else:
-		((x_train, y_train), (x_test, y_test)) = test_train_batch_data(dataset, encoder, debug)
+		((x_train, y_train), (x_test, y_test)) = test_train_batch_data(dataset, encoder, debug, augment_data=False)
 
 	return predict_on_data(batch_size, verbose, epistemic_monte_carlo_simulations, debug, full_model,
 		x_train, y_train, x_test, y_test,

@@ -60,16 +60,21 @@ def bayesian_categorical_crossentropy(T, num_classes):
     # shape: (N,)
     std = K.sqrt(pred_var[:, num_classes:])
     # shape: (N,)
-    variance = pred_var[:, num_classes] + K.ones_like(pred_var[:, num_classes])
+    variance = pred_var[:, num_classes]
+    variance_depressor = K.exp(variance) - K.ones_like(variance)
     # shape: (N, C)
     pred = pred_var[:, 0:num_classes]
+    # shape: (N,)
+    undistorted_loss = K.categorical_crossentropy(pred, true, from_logits=True)
     # shape: (T,)
     iterable = K.variable(np.ones(T))
     dist = distributions.Normal(loc=K.zeros_like(std), scale=std)
-    # shape: (N,)
-    undistorted_loss = K.categorical_crossentropy(pred, true, from_logits=True)
     monte_carlo_results = K.map_fn(gaussian_categorical_crossentropy(true, pred, dist, undistorted_loss, num_classes), iterable, name='monte_carlo_results')
-    return K.mean(monte_carlo_results, axis=0) * undistorted_loss + K.pow(K.log(variance), 3)
+    
+    variance_loss = K.mean(monte_carlo_results, axis=0) * undistorted_loss
+    
+    return variance_loss + undistorted_loss + variance_depressor
+  
   return bayesian_categorical_crossentropy_internal
 
 # for a single monte carlo simulation, 
@@ -80,6 +85,7 @@ def bayesian_categorical_crossentropy(T, num_classes):
 # pred - predicted logit values. Shape: (N, C)
 # dist - normal distribution to sample from. Shape: (N, C)
 # undistorted_loss - the crossentropy loss without variance distortion. Shape: (N,)
+# num_classes - the number of classes. C
 # returns - total differences for all classes (N,)
 def gaussian_categorical_crossentropy(true, pred, dist, undistorted_loss, num_classes):
   def map_fn(i):

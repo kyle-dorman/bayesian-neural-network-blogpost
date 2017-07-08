@@ -57,13 +57,13 @@ def main(_):
 
 	print("Compiling model.")
 	model.compile(
-		optimizer=Adam(lr=1e-4),
+		optimizer=Adam(lr=1e-3, decay=0.001),
 		loss={
 		'logits_variance': bayesian_categorical_crossentropy(FLAGS.monte_carlo_simulations, num_classes),
 		'softmax_output': 'categorical_crossentropy'
 		},
 		metrics={'softmax_output': metrics.categorical_accuracy},
-		loss_weights={'logits_variance': .5, 'softmax_output': 1.})
+		loss_weights={'logits_variance': .2, 'softmax_output': 1.})
 
 	print("Starting model train process.")
 	model.fit(x_train, 

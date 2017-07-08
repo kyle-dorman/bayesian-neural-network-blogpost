@@ -28,11 +28,11 @@ def main(_):
 
 	print("Downloading model info")
 
-	download_s3(batch_config.batch_folder()+"/train.p")
-	download_s3(batch_config.batch_folder()+"/test.p")
-	download_s3(batch_config.batch_folder()+"/augment-train.p")
-	download_s3(batch_config.batch_folder()+"/augment-test.p")
-	download_s3(batch_config.predictions_folder()+"/results.p")
+	# download_s3(batch_config.batch_folder()+"/train.p")
+	# download_s3(batch_config.batch_folder()+"/test.p")
+	# download_s3(batch_config.batch_folder()+"/augment-train.p")
+	# download_s3(batch_config.batch_folder()+"/augment-test.p")
+	# download_s3(batch_config.predictions_folder()+"/results.p")
 	download_s3(bayesian_config.model_file())
 	download_s3(bayesian_config.csv_log_file())
 
