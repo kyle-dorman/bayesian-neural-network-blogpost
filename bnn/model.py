@@ -88,7 +88,7 @@ def load_full_epistemic_uncertainty_model(encoder, input_shape, checkpoint, epis
 
 
 def create_baysean_model(encoder, input_shape, output_classes):
-	encoder_model = create_encoder_model(encoder, input_shape)
+	encoder_model = resnet50(encoder, input_shape)
 	input_tensor = Input(shape=encoder_model.output_shape[1:])
 	x = BatchNormalization(name='post_encoder')(input_tensor)
 	x = Dropout(0.5)(x)
@@ -126,7 +126,6 @@ def create_encoder_model(encoder, input_shape):
 
 	model = Model(inputs=input_tensor, outputs=output_tensor)
 	return model
-		
 
 def encoder_min_input_size(encoder):
 	if encoder == 'resnet50':
