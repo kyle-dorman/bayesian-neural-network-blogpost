@@ -12,7 +12,7 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
 from keras import metrics
 import numpy as np
 
-from bnn.model import create_baysean_model, encoder_min_input_size
+from bnn.model import create_bayesian_model, encoder_min_input_size
 from bnn.loss_equations import bayesian_categorical_crossentropy
 from bnn.util import isAWS, upload_s3, stop_instance, BayesianConfig
 from bnn.data import test_train_batch_data
@@ -43,7 +43,7 @@ def main(_):
 	min_image_size.append(3)
 	num_classes = y_train.shape[-1]
 
-	model = create_baysean_model(FLAGS.encoder, min_image_size, num_classes)
+	model = create_bayesian_model(FLAGS.encoder, min_image_size, num_classes)
 
 	if FLAGS.debug:
 		print(model.summary())

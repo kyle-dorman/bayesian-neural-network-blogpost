@@ -367,8 +367,8 @@ If my model understands aleatoric uncertainty well, I should be able to input im
 
 ![alt image][image13]
 > Figure 8: 
->		Left side: Images & uncertainties with gamma values applied. 
->		Right side: Images & uncertainties of original image.
+>	Left side: Images & uncertainties with gamma values applied. 
+>	Right side: Images & uncertainties of original image.
 
 The model's accuracy on the augmented images is 5.5%. This means the gamma images completely tricked my model. The model wasn't trained to score well on these large gamma distortions so that is to be expected. Figure 8 shows the predicted uncertainty for eight of the augmented images on the left and eight original uncertainties and images on the right. The first four images have the highest predicted aleatoric uncertainty of the augmented images and the last four had the lowest aleatoric uncertainty of the augmented images. I am excited to see that the model predicts higher aleatoric and epistemic uncertainties for each image! The aleatoric uncertainty should be larger because the averse lighting conditions make the images harder to understand and the epistemic uncertainty should be larger because the model has not been trained on images with larger gamma distortions. 
 

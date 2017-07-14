@@ -49,8 +49,8 @@ class PredictiveEntropy(Layer):
 
 def load_full_model(encoder, checkpoint, input_shape):
 	encoder_model = create_encoder_model(encoder, input_shape)
-	baysean_model = load_baysean_model(checkpoint)
-	outputs = baysean_model(encoder_model.outputs)
+	bayesian_model = load_bayesian_model(checkpoint)
+	outputs = bayesian_model(encoder_model.outputs)
 	# hack to rename outputs
 	logits_variance = Lambda(lambda x: x, name='logits_variance')(outputs[0])
 	softmax_output = Lambda(lambda x: x, name='softmax_output')(outputs[1])
@@ -58,13 +58,13 @@ def load_full_model(encoder, checkpoint, input_shape):
 	return Model(inputs=encoder_model.inputs, outputs=[logits_variance, softmax_output])
 
 
-def load_baysean_model(checkpoint, monte_carlo_simulations=100, classes=10):
+def load_bayesian_model(checkpoint, monte_carlo_simulations=100, classes=10):
 	get_custom_objects().update({"bayesian_categorical_crossentropy_internal": bayesian_categorical_crossentropy(monte_carlo_simulations, classes)})
 	return load_model(checkpoint)
 
 
 def load_epistemic_uncertainty_model(checkpoint, epistemic_monte_carlo_simulations):
-	model = load_baysean_model(checkpoint)
+	model = load_bayesian_model(checkpoint)
 	inpt = Input(shape=(model.input_shape[1:]))
 	x = RepeatVector(epistemic_monte_carlo_simulations)(inpt)
 	# Keras TimeDistributed can only handle a single output from a model :(
@@ -81,13 +81,13 @@ def load_epistemic_uncertainty_model(checkpoint, epistemic_monte_carlo_simulatio
 
 def load_full_epistemic_uncertainty_model(encoder, input_shape, checkpoint, epistemic_monte_carlo_simulations):
 	encoder_model = create_encoder_model(encoder, input_shape)
-	baysean_model = load_epistemic_uncertainty_model(checkpoint, epistemic_monte_carlo_simulations)
-	outputs = baysean_model(encoder_model.outputs)
+	bayesian_model = load_epistemic_uncertainty_model(checkpoint, epistemic_monte_carlo_simulations)
+	outputs = bayesian_model(encoder_model.outputs)
 
 	return Model(inputs=encoder_model.inputs, outputs=outputs)
 
 
-def create_baysean_model(encoder, input_shape, output_classes):
+def create_bayesian_model(encoder, input_shape, output_classes):
 	encoder_model = resnet50(encoder, input_shape)
 	input_tensor = Input(shape=encoder_model.output_shape[1:])
 	x = BatchNormalization(name='post_encoder')(input_tensor)

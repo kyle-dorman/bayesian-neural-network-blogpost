@@ -5,7 +5,7 @@ from keras import backend as K
 import numpy as np
 import math
 
-from bnn.model import load_baysean_model, load_full_model, encoder_min_input_size, load_epistemic_uncertainty_model, load_full_epistemic_uncertainty_model
+from bnn.model import load_bayesian_model, load_full_model, encoder_min_input_size, load_epistemic_uncertainty_model, load_full_epistemic_uncertainty_model
 from bnn.data import test_train_batch_data, test_train_data
 from bnn.util import BayesianConfig
 from bnn.loss_equations import bayesian_categorical_crossentropy
@@ -20,7 +20,7 @@ def load_testable_model(encoder, config, monte_carlo_simulations, num_classes, m
 			loss={'logits_variance': bayesian_categorical_crossentropy(monte_carlo_simulations, num_classes)},
 			metrics={'softmax_output': ['categorical_accuracy', 'top_k_categorical_accuracy']})
 	else:
-		model = load_baysean_model(config.model_file())
+		model = load_bayesian_model(config.model_file())
 
 	return model   
 
