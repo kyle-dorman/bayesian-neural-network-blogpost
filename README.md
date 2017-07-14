@@ -361,8 +361,7 @@ To further explore the uncertainty, I broke the test data into three groups base
 Above are the images with the highest aleatoric and epistemic uncertainty. While it is interesting to look at, it is not exactly clear to me why these images images have high aleatoric or epistemic uncertainty. This is one downside to training an image classifier to produce uncertainty. The uncertainty for the entire image is reduced to a single value. It is often times much easier to understand uncertainty in an image segmentation model because it is easier to compare the results for each pixel in an image. 
 
 ![alt image][remoteimage2]
-
-"Illustrating the difference between aleatoric and epistemic uncertainty for semantic segmentation. You can notice that aleatoric uncertainty captures object boundaries where labels are noisy. The bottom row shows a failure case of the segmentation model, when the model is unfamiliar with the footpath, and the corresponding increased epistemic uncertainty." From [this](http://alexgkendall.com/computer_vision/bayesian_deep_learning_for_safe_ai/) blog post.
+> "Illustrating the difference between aleatoric and epistemic uncertainty for semantic segmentation. You can notice that aleatoric uncertainty captures object boundaries where labels are noisy. The bottom row shows a failure case of the segmentation model, when the model is unfamiliar with the footpath, and the corresponding increased epistemic uncertainty." [link](http://alexgkendall.com/computer_vision/bayesian_deep_learning_for_safe_ai/)
 
 If my model understands aleatoric uncertainty well, I should be able to input images with low contrast, high brightness/darkness or high occlusions and have my model predict larger aleatoric uncertainty. To test this theory, I applied a range of gamma values to my test images to increase/decrease the pixel intensity and predicted these augmented image labels.
 
