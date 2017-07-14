@@ -1,4 +1,4 @@
-# Including uncertainty in classification using Bayesian deep learning
+# Building a Bayesian deep learning classifier
 
 [//]: # (Image References)
 
@@ -24,7 +24,6 @@
 In this blog post I will go over how to train a neural network classifier using [Keras](https://keras.io/) and [tensorflow](https://www.tensorflow.org/) to not only predict an outcome variable but also how uncertain the model is about its prediction using Bayesian deep learning techniques. I will first explain what uncertainty is and why it is important. I will then explain what Bayesian deep learning is and cover two techniques for including uncertainty in a deep learning model. To demonstrate my results I will use Keras to train dense layers over a frozen [ResNet50](https://arxiv.org/abs/1512.03385) encoder on the [cifar10](https://www.cs.toronto.edu/~kriz/cifar.html) dataset. Using less than 200 epochs and a custom loss object, I was able to train my model to score 86.4% on the training set. Lastly, I will explore the uncertainty predictions of my model and suggest next steps.
 
 ![alt image][image3]
-
 > Figure 1: example of each class in cifar10
 
 ### Acknowledgments
