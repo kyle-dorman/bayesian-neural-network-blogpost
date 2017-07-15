@@ -14,7 +14,7 @@
 [remoteimage10]: https://cdn.meme.am/cache/instances/folder58/55599058.jpg "Shake if off"
 [remoteimage11]: http://www.midsouthphotos.com/spt-slatfatf.jpg "Thanks for all the fish"
 
-[image1]: ./blog_images/aleatoric_variance_loss_function_analysis.png "Aleatoric variance vs loss for different incorrect logit values"
+[image1]: ./blog_images/aleatoric_variance_loss_function_analysis.png "Aleatoric variance vs loss for different 'wrong' logit values"
 [image2]: ./blog_images/catdog.png "Ambiguity example"
 [image3]: ./blog_images/example_images.png "Example Cifar10 images"
 [image4]: ./blog_images/gammas.png "Example image with different gamma values"
@@ -196,10 +196,10 @@ In Figure 2 `right < wrong` corresponds to a point on the left half of Figure 1 
 I then scaled the 'distorted average change in loss' by the original undistorted categorical cross entropy. This is done because the distorted average change in loss for the wrong logit case is about the same for all logit differences greater than three(because the derivative of the line is 0). To ensure the loss is greater than zero, I add the undistorted categorical cross entropy. And to ensure the variance that minimizes the loss is less than infinity, I add the exponential of the variance.
 
 ![alt image][image1]
-> Figure 3: Aleatoric variance vs loss for different incorrect logit values
+> Figure 3: Aleatoric variance vs loss for different 'wrong' logit values
 
 ![alt image][image14]
-> Figure 4: Minimum aleatoric variance and minimum loss for different incorrect logit values
+> Figure 4: Minimum aleatoric variance and minimum loss for different 'wrong' logit values
 
 These are the results of calculating the above loss function for binary classification example where the 'right' logit value is held constant at 1.0 and the 'wrong' logit value changes for each line. I run 10000 Monte Carlo simulations to attempt to create smooth lines. When the 'wrong' logit value is less than 1.0 (and thus less than the 'right' logit value), the minimum variance is 0.0. As the wrong 'logit' value increases, the variance that minimizes the loss increases. 
 
@@ -390,7 +390,7 @@ My model's categorical accuracy on the test dataset is 86.4%. This is not an ama
 The aleatoric uncertainty values tend to be much smaller than the epistemic uncertainty. These two values can't be compared directly on the same image. They can however be compared against the uncertainty values the model predicts for other images in this dataset. 
 
 ![alt image][image9]
-> Figure 5: Uncertainty to relative rank of correct logit value.
+> Figure 5: Uncertainty to relative rank of 'right' logit value.
 
 To further explore the uncertainty, I broke the test data into three groups based on the relative value of the correct logit. In Figure 5, 'first' is all correct predictions (i.e logit value for the 'right' label was the largest value). 'second', the 'right' label is the second largest logit value. And 'rest' is all other relative values. 86.4% of samples are in the 'first' group, 8.7% are in the 'second' group, and 4.9% are in the 'rest' group. Figure 5 shows the mean and standard deviation of the aleatoric and epistemic uncertainty for the test set broken out by these three groups. As I was hoping, the epistemic and aleatoric uncertainties are correlated with the relative rank of the 'right' logit. This indicates the model is more likely to identify incorrect labels as situations it is unsure about. Additionally, the model is predicting greater than zero uncertainty when the model's prediction is correct. I expected the model to exhibit this characteristic because the model can be uncertain even if it's prediction is correct.
 
