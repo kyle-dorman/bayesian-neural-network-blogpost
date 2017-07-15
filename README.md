@@ -4,6 +4,15 @@
 
 [remoteimage1]: http://mlg.eng.cam.ac.uk/yarin/blog_images/gp_net.jpg "Bayesian deep learning"
 [remoteimage2]: https://alexgkendall.github.io/assets/images/blog_uncertainty/uncertainty_types.jpg "Segmentation uncertainty"
+[remoteimage3]: http://cvgl.stanford.edu/hightlight_figures/3DVP.png "Occlusion example"
+[remoteimage4]: https://twentyseventhmay.files.wordpress.com/2012/02/photo-4.jpg "Lack of visual features example"
+[remoteimage5]: https://www.new-york-city-travel-tips.com/wp-content/uploads/2014/01/manhattanhenge-2-590x394.jpg "Under/over exposed example"
+[remoteimage6]: http://preview.cutcaster.com/cutcaster-photo-800939249-Semi-trucks-and-sun-glare-along-Trans-Canada-Highway.jpg "Truck with glare"
+[remoteimage7]: https://neil.fraser.name/writing/tank/tank-yes.jpg "Tank"
+[remoteimage8]: https://neil.fraser.name/writing/tank/tank-no.jpg "No tank"
+[remoteimage9]: https://cdn-images-1.medium.com/max/2000/1*m0T_vjg4mOJNIvel1JXGqQ.png "Kalman filter"
+[remoteimage10]: https://cdn.meme.am/cache/instances/folder58/55599058.jpg "Shake if off"
+[remoteimage11]: http://www.midsouthphotos.com/spt-slatfatf.jpg "Thanks for all the fish"
 
 [image1]: ./blog_images/aleatoric_variance_loss_function_analysis.png "Aleatoric variance vs loss for different incorrect logit values"
 [image2]: ./blog_images/catdog.png "Ambiguity example"
@@ -11,7 +20,7 @@
 [image4]: ./blog_images/gammas.png "Example image with different gamma values"
 [image5]: ./blog_images/max_aleatoric_uncertainty_test.png "Max Aleatoric Uncertainty"
 [image6]: ./blog_images/max_epistemic_uncertainty_test.png "Max Epistemic Uncertainty"
-[image7]: ./blog_images/softmax_categorical_crossentropy_v_logit_difference.png "Softmax categorical crossentropy vs. logit difference"
+[image7]: ./blog_images/softmax_categorical_crossentropy_v_logit_difference.png "Softmax categorical cross entropy vs. logit difference"
 [image8]: ./blog_images/test_stats.png "Stats"
 [image9]: ./blog_images/test_first_second_rest_stats.png "Stats by correct label logit position"
 [image10]: ./blog_images/change_logit_loss_analysis.png "Change in logit loss"
@@ -21,58 +30,76 @@
 [image14]: /blog_images/aleatoric_variance_loss_values.png "Minimum aleatoric variance and minimum loss for different incorrect logit values"
 
 ### Intro
-In this blog post I will go over how to train a neural network classifier using [Keras](https://keras.io/) and [tensorflow](https://www.tensorflow.org/) to not only predict an outcome variable but also how uncertain the model is about its prediction using Bayesian deep learning techniques. I will first explain what uncertainty is and why it is important. I will then explain what Bayesian deep learning is and cover two techniques for including uncertainty in a deep learning model. To demonstrate my results I will use Keras to train dense layers over a frozen [ResNet50](https://arxiv.org/abs/1512.03385) encoder on the [cifar10](https://www.cs.toronto.edu/~kriz/cifar.html) dataset. Using less than 200 epochs and a custom loss object, I was able to train my model to score 86.4% on the training set. Lastly, I will explore the uncertainty predictions of my model and suggest next steps.
+This blog post details a method of training a Bayesian deep learning classifier using [Keras](https://keras.io/) and [tensorflow](https://www.tensorflow.org/). After reading this post you should understand what Bayesian deep learning, why including uncertainty in a deep learning model is important, and how to include uncertainty in your next project. 
 
-![alt image][image3]
-> Figure 1: example of each class in cifar10
+Before diving into the specific training example, I will cover a few important high level concepts:
+1. What is Bayesian deep learning? 
+2. What is uncertainty?
+3. Why is uncertainty important?
+
+I will then cover two techniques for including uncertainty in a deep learning model and go over a specific example using Keras to train dense layers over a frozen [ResNet50](https://arxiv.org/abs/1512.03385) encoder on the [cifar10](https://www.cs.toronto.edu/~kriz/cifar.html) dataset. Lastly, I will cover ways of exploring the uncertainty predictions of a Bayesian deep learning classifier and suggest next steps.
 
 ### Acknowledgments
-The code in the [github repo](https://github.com/kyle-dorman/bayesian-neural-network-blogpost) is original work but the bulk of the text and all of my knowledge about Bayesian deep learning comes from a few blog posts([here](http://alexgkendall.com/computer_vision/bayesian_deep_learning_for_safe_ai/) and [here](http://mlg.eng.cam.ac.uk/yarin/blog_3d801aa532c1ce.html)) as well as a few papers from the Cambridge machine learning group. I want to say thank you this group for all their amazing blog posts and papers that make this difficult concept easier to understand. 
+This post is inspired by two blog posts and a [white paper](https://arxiv.org/pdf/1703.04977.pdf) on Bayesian deep learning from the University of Cambridge machine learning group. If you feel inspired after reading this post, I encourage you to continue exploring Bayesian deep learning by reading [Deep Learning Is Not Good Enough, We Need Bayesian Deep Learning for Safe AI](http://alexgkendall.com/computer_vision/bayesian_deep_learning_for_safe_ai/) and [What My Deep Model Doesn't Know...](http://mlg.eng.cam.ac.uk/yarin/blog_3d801aa532c1ce.html). 
 
-### What is [uncertainty](https://en.wikipedia.org/wiki/Uncertainty)
+Thank you to the University of Cambridge machine learning group for all their amazing blog posts and papers. You make this difficult concept easier to understand. 
+
+### What is Bayesian deep learning?
+Bayesian deep learning is (surprise!) the combination of Bayesian approaches and deep learning. In practice this means including uncertainty in your deep learning model predictions. The idea of including uncertainty in neural networks was proposed as early as [1991](http://papers.nips.cc/paper/419-transforming-neural-net-output-levels-to-probability-distributions.pdf). Instead of just having layers with weight parameters and biases, imagine placing a distribution over each weight parameter in your model and you begin to understand Bayesian deep learning. Because Bayesian deep learning models require more parameters to optimize, they are difficult to work with and have not been used very often. More recently, Bayesian deep learning has become popular again and new techniques are being developed to include uncertainty in a model with less complexity.
+
+![alt image][remoteimage1]
+> Visualizing a Bayesian deep learning model. 
+
+### What is [uncertainty](https://en.wikipedia.org/wiki/Uncertainty)?
 Uncertainty is the state of having limited knowledge where it is impossible to exactly describe the existing state, a future outcome, or more than one possible outcome. As it pertains to deep learning and classification, uncertainty also includes ambiguity; uncertainty about human definitions and concepts, not an objective fact of nature.
 
 ![alt image][image2]
-> Figure 2: an example of ambiguity. What should the model predict?
+> An example of ambiguity. What should the model predict?
 
 ### Types of uncertainty
 There are a few different types of uncertainty and I will only cover two important types in this post.
 
 #### Aleatoric uncertainty
-Measures what you can't understand from the data. It can be explained away with the ability to observe all explanatory variables with increased precision. Think of aleatoric uncertainty as sensing uncertainty. There are actually two types of aleatoric uncertainty, heteroscedastic and homoscedastic, but I am only covering heteroscedastic uncertainty in this post. Homoscedastic is covered more in depth in some of the blog post mentioned above. 
+Measures what you can't understand from the data. It can be explained away with the ability to observe all explanatory variables with increased precision. Think of aleatoric uncertainty as sensing uncertainty. There are actually two types of aleatoric uncertainty, heteroscedastic and homoscedastic, but I am only covering heteroscedastic uncertainty in this post. Homoscedastic is covered more in depth in [this](http://alexgkendall.com/computer_vision/bayesian_deep_learning_for_safe_ai/) blog post. 
 
 Concrete examples of aleatoric uncertainty in stereo imagery are occlusions(parts of the scene a camera can't see), lack of visual features (i.e a blank wall), or over/under exposed areas (glare & shading).
 
-#### Epistemic uncertainty
-Measures what your model doesn't know due to lack of training data. It can be explained away with increased training data. Think of epistemic uncertainty as model uncertainty.
+![alt image][remoteimage3]
+> Occlusions example
 
-If you trained an image classification model to predict the ten cifar10 classes but the airplane class images in your training set where all of airplanes in the sky, your model might predict high epistemic uncertainty when shown an image of an airplane on the ground because this is not a situation it has been trained for. 
+![alt image][remoteimage4]
+> Lack of visual features example
+
+![alt image][remoteimage5]
+> Under/over exposed example
+
+#### Epistemic uncertainty
+Measures what your model doesn't know due to lack of training data. It can be explained away with infinite training data. Think of epistemic uncertainty as model uncertainty. 
 
 An easy way to observe epistemic uncertainty in action is to train a model on 25% of your dataset and train a model on the entire dataset. A model trained on only 25% of the dataset will have higher average epistemic uncertainty than the model trained on the entire dataset because its seen fewer examples. 
 
-### Why is uncertainty important
+A fun example of epistemic uncertainty was uncovered in the now famous Not Hotdog app. In practice the model preforms very well but it seems the network was never trained on 'not hotdog' images that included ketchup on the item in the image. The model is fooled in these cases and if the model had been trained to predict epistemic uncertainty, it would also predict high epistemic uncertainty.
+<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">If there&#39;s ketchup, it&#39;s a hotdog <a href="https://twitter.com/FunnyAsianDude">@FunnyAsianDude</a> <a href="https://twitter.com/hashtag/nothotdog?src=hash">#nothotdog</a> <a href="https://twitter.com/hashtag/NotHotdogchallenge?src=hash">#NotHotdogchallenge</a> <a href="https://t.co/ZOQPqChADU">pic.twitter.com/ZOQPqChADU</a></p>&mdash; David (@david__kha) <a href="https://twitter.com/david__kha/status/865093285886304256">May 18, 2017</a></blockquote>
+<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+### Why is uncertainty important?
 Whether we use deep learning or other techniques, in machine learning we are trying to create approximate representations of the real world. Popular deep learning models created today produce a point estimate but not an uncertainty value. Understanding if your model is under-confident or falsely over-confident can help you reason about your model and your dataset.
 
 Note: In a classification problem, the softmax output does give you a probability, but this is not the same as uncertainty. Softmax probability is a probability distribution over your possible outcomes. It explains how confident your model is relative to the other options which is different than your model being confident. 
 
-The two types of uncertainty explained above are import for different reasons. Aleatoric uncertainty is important in cases where parts of the observation space have higher noise levels than others. One particular example where aleatoric uncertainty comes to mind, is the first fatality involving a self driving car. Tesla has said that during this incident its camera failed to recognize the white truck against a bright sky. An image segmentation classifier that is able to predict aleatoric uncertainty could have been trained to recognize this difficult image space and placed a high uncertainty there. Rather just using a point estimation, the uncertainty, combine with the car's radar data could have helped the car better understand what was in front of it.
+The two types of uncertainty explained above are import for different reasons. Aleatoric uncertainty is important in cases where parts of the observation space have higher noise levels than others. One particular example where aleatoric uncertainty comes to mind, is the first fatality involving a self driving car. Tesla has said that during this incident, the car's autopilot failed to recognize the white truck against a bright sky. An image segmentation classifier that is able to predict aleatoric uncertainty would recognize this particular area of the image was difficult to interpret and would have placed a high uncertainty there. The car's radar did "see" the truck. Rather just using a point estimation in conflict with the radar observation, the uncertain image observation, combine with the car's radar data could have helped the car better understand what was in front of it.
 
-Epistemic uncertainty is important in safety critical applications because it helps identify situations that are different from training data. Epistemic uncertainty is also helpful for exploring your dataset. Epistemic uncertainty would have been helpful with [this](https://neil.fraser.name/writing/tank/) particular neural network mishap from the 1980s. Researchers trained a neural network to recognize tanks hidden in trees vs. trees without tanks. After training, the network preformed incredibly well on the training set and the test set! The only problem was all of the images of the tanks were taken on cloudy days and images without tanks were taken on a sunny day. Whoops. 
+![alt image][remoteimage6]
 
-Another example where epistemic uncertainty could be useful is in the now famous Not Hotdog app. In practice the model preforms very well but it seems the network was never trained on 'not hotdog' images that included ketchup on the item in the image.
+Epistemic uncertainty is important in safety critical applications because it helps identify situations that are different from training data. Epistemic uncertainty is also helpful for exploring your dataset. Epistemic uncertainty would have been helpful with [this](https://neil.fraser.name/writing/tank/) particular neural network mishap from the 1980s. Researchers trained a neural network to recognize tanks hidden in trees vs. trees without tanks. After training, the network preformed incredibly well on the training set and the test set! The only problem was all of the images of the tanks were taken on cloudy days and images without tanks were taken on a sunny day. Whoops. The classifier had actually been trained to identify sunny vs cloudy days. 
 
-<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">If there&#39;s ketchup, it&#39;s a hotdog <a href="https://twitter.com/FunnyAsianDude">@FunnyAsianDude</a> <a href="https://twitter.com/hashtag/nothotdog?src=hash">#nothotdog</a> <a href="https://twitter.com/hashtag/NotHotdogchallenge?src=hash">#NotHotdogchallenge</a> <a href="https://t.co/ZOQPqChADU">pic.twitter.com/ZOQPqChADU</a></p>&mdash; David (@david__kha) <a href="https://twitter.com/david__kha/status/865093285886304256">May 18, 2017</a></blockquote>
-<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+![alt image][remoteimage7] ![alt image][remoteimage8]
+> Tank & cloudy vs no tank & sunny
 
-This ambitious (and possibly bored) 'tweeter' identified a case where the Not Hotdog model would probably exhibit large epistemic uncertainty.
+Uncertainty predictions in deep learning models are also important in robotics. I am currently enrolled in the Udacity self driving car nanodegree, and have been learning about techniques cars/robots used to recognize and track objects around then. Self driving cars use a powerful technique called [Kalman filters](https://en.wikipedia.org/wiki/Kalman_filter) to track objects. Kalman filters combine a series of measurement data containing statistical noise and produce estimates that tend to be more accurate than any single measurement. Traditional deep learning models are not able to contribute to Kalman filters because they only predict an outcome and do not include an uncertainty term. Training models that are able to predict uncertainty would, in theory, allow them to contribute to Kalman filter tracking.
 
-Uncertainty predictions in deep learning models is also important in robotics. I am currently enrolled in the Udacity self driving car nanodegree, and have been learning about techniques cars/robots used to recognize and track objects around then. Self driving cars use a powerful technique called [Kalman filters](https://en.wikipedia.org/wiki/Kalman_filter) to track objects. Kalman filters combine a series of measurement data containing statistical noise and produce estimates that tend to be more accurate than any single measurement. Traditional deep learning models are not able to contribute to Kalman filters because they only predict an outcome and do not include an uncertainty term. Training models that are able to predict uncertainty would, in theory, allow them to contribute to Kalman filter tracking.
-
-### Bayesian deep learning
-The idea of including uncertainty in neural networks was proposed as early as [1991](http://papers.nips.cc/paper/419-transforming-neural-net-output-levels-to-probability-distributions.pdf). Instead of just having layers with weight parameters and biases, imagine placing a distribution over each weight parameter in your model and you begin to understand Bayesian deep learning. Because Bayesian deep learning models require more parameters to optimize, they are difficult to work with and have not been used very often. More recently, Bayesian deep learning has become popular again and new techniques are being developed to include uncertainty in a model with less model complexity.
-
-![alt image][remoteimage1]
-> Visualizing a Bayesian deep learning model. 
+![alt image][remoteimage9]
+> Radar and lidar data merged into the Kalman filter. Image data could be incorporated as well. 
 
 ### Calculating uncertainty in deep learning classification models
 Because aleatoric and epistemic uncertainty are different, they are calculated differently. 
@@ -139,42 +166,54 @@ def gaussian_categorical_crossentropy(true, pred, dist, undistorted_loss, num_cl
   return map_fn
 ```
 
-The loss function I created is based on the loss function in [this](https://arxiv.org/pdf/1703.04977.pdf) paper. In the paper, the loss function creates a normal distribution with zero mean and the predicted variance. It distorts the predicted logit values by sampling from the distribution and computes the softmax categorical cross entropy using the distorted predictions. It does this T times and then takes the average of the T samples as the loss. 
-
-Taking the categorical cross entropy of the distorted logits should ideally result in a few interesting properties. First, when the predicted logit value is much larger than any other logit value(right half of Figure 3), increasing the variance should only increase the loss. This is true because the derivative is negative on the right half of the graph. The minimum loss should be close to 0 in this case. When the wrong logit(w) is much larger than the right logit(r) and the variance is 0, the loss should be ~`w-r`. You can see this is on the right half of Figure 3. To enable the model to learn aleatoric uncertainty, when the wrong logit value is greater than the correct logit value the loss function should be minimized for a variance value greater than 0. 
+The loss function I created is based on the loss function in [this](https://arxiv.org/pdf/1703.04977.pdf) paper. In the paper, the loss function creates a normal distribution with zero mean and the predicted variance. It distorts the predicted logit values by sampling from the distribution and computes the softmax categorical cross entropy using the distorted predictions. It takes T Monte Carlo samples and then takes the average of the T samples as the loss. 
 
 ![alt image][image7]
-> Figure 3: Softmax categorical cross entropy vs. logit difference for binary classification
+> Figure 1: Softmax categorical cross entropy vs. logit difference for binary classification
 
-I was able to use the loss function suggested in the paper to decrease the loss when the wrong logit value is greater than the right logit value by increasing the variance, but the loss difference was extremely small (<0.1). During training, my model had a hard time picking up on this slight difference and the aleatoric variance predictions from my model did not make sense. I believe this happens because the slope of Figure 3 on the left half of the graph is ~ -1. Distorting the logits using a normal distribution and applying softmax cross entropy results in another normal distribution and the mean of the normal distribution is 0. Ideally the model is be rewarded in situations where it increases the right logit value above the wrong logit value and only slightly discouraged for decreasing the right logit further.
+Warning: This next part might be confusing so read closely. 
 
-To make the model easier to train, I wanted to create a more significant loss change as the variance increases. Just like in the paper, my loss function above does compute the categorical cross entropy for T samples of the distorted logits using a normal distribution with a mean of 0 and the predicted variance. But from there my loss function deviates from the paper. 
+In Figure 1, the y axis is the softmax categorical cross entropy. The x axis is the difference between the 'right' logit value and the 'wrong' logit value. 'right' means the correct class or this predict. 'wrong' means the incorrect class. I will use the term 'logit difference' to mean the x axis of Figure 1. When the 'logit difference' is positive in Figure 1, the softmax prediction will be correct. When 'logit difference' is negative, the prediction will be incorrect. I will continue to use the terms 'logit difference', 'right' logit, and 'wrong' logit this way while I explain the aleatoric loss function. 
 
-I applied the [elu](http://image-net.org/challenges/posters/JKU_EN_RGB_Schwarz_poster.pdf) activation function to the change in categorical cross entropy, `undistorted_loss - distorted_loss`. Because elu is a non-linear function around 0, it shifts the mean of the normal distribution away from zero for the left half of Figure 3 but maintains the mean for the right half of Figure 3. 
+Figure 1 is helpful for understanding the results of the normal distribution distortion. When the logit values (in a binary classification) are distorted using a normal distribution, the distortion is effectively creating a normal distribution with a mean of the original predicted 'logit difference' and the predicted variance as the distribution variance. Applying softmax cross entropy to the distorted logit values is the same as sampling along the line in Figure 1 for a 'logit difference' value.
+
+Taking the categorical cross entropy of the distorted logits should ideally result in a few interesting properties. 
+1. When the predicted logit value is much larger than any other logit value(right half of Figure 1), increasing the variance should only increase the loss. This is true because the derivative is negative on the right half of the graph. i.e. increasing the 'logit difference' results in only a slightly smaller decrease in softmax categorical cross entropy compared to and equal decrease in 'logit difference'. The minimum loss should be close to 0 in this case.
+2. When the 'wrong' logit is much larger than the 'right' logit (left half of graph) and the variance is ~0, the loss should be ~`wrong_logit-right_logit`. You can see this is on the right half of Figure 1. When the 'logit difference' is -4, the softmax cross entropy is 4. The slope on this part of the graph is ~ -1 so this should be true as the 'logit difference' continues to decrease. 
+3. To enable the model to learn aleatoric uncertainty, when the 'wrong' logit value is greater than the 'right' logit value (left half of graph), the loss function should be minimized for a variance value greater than 0. For an image that has high aleatoric uncertainty, and thus is difficult to make an accurate prediction on, this feature encourages the model to find a local loss minimum during training by increasing its predicted variance.
+
+I was able to use the loss function suggested in the paper to decrease the loss when the 'wrong' logit value is greater than the 'right' logit value by increasing the variance, but the decrease in loss due to increasing the variance was extremely small (<0.1). During training, my model had a hard time picking up on this slight local minimum and the aleatoric variance predictions from my model did not make sense. I believe this happens because the slope of Figure 1 on the left half of the graph is ~ -1. Because the slope is -1, sampling a normal distribution along this line, will result in another normal distribution and the mean will be about the same as it was before. What we want is for the mean of the T samples to decrease as the variance increases. 
+
+To make the model easier to train, I wanted to create a more significant loss change as the variance increases. Just like in the paper, my loss function above does distort the logits for T Monte Carlo samples using a normal distribution with a mean of 0 and the predicted variance and then computes the categorical cross entropy for each sample. But from there my loss function deviates from the paper. 
+
+I applied the [elu](http://image-net.org/challenges/posters/JKU_EN_RGB_Schwarz_poster.pdf) activation function to the change in categorical cross entropy, i.e. the original undistorted loss compared to the distorted loss, `undistorted_loss - distorted_loss`. Because elu is a non-linear function centered around 0, it shifts the mean of the normal distribution away from zero for the left half of Figure 1. The `elu` is also ~linear for very small values near 0 so the mean for the right half of Figure 1 stays the same. 
 
 ![alt image][image10]
-> Figure 4: Average change in loss & distorted average change in loss.
+> Figure 2: Average change in loss & distorted average change in loss.
 
-In Figure 4 `right < wrong` corresponds to a point on the left half of Figure 3 and `wrong < right` corresponds to a point on the right half of Figure 4. You can see that the distribution of outcomes from the wrong logit case, looks similar to the normal distribution and the right case is mostly small values near zero. After applying `-elu` to the change in loss, the mean of the `right < wrong` becomes much larger. In this case it changes from -0.16 to 0.25. The mean of the `wrong < right` stays about the same. The mean of the lower graphs in Figure 4 can be called, distorted average change in loss.
+In Figure 2 `right < wrong` corresponds to a point on the left half of Figure 1 and `wrong < right` corresponds to a point on the right half of Figure 2. You can see that the distribution of outcomes from the 'wrong' logit case, looks similar to the normal distribution and the 'right' case is mostly small values near zero. After applying `-elu` to the change in loss, the mean of the `right < wrong` becomes much larger. In this example, it changes from -0.16 to 0.25. The mean of the `wrong < right` stays about the same. I call the mean of the lower graphs in Figure 2 the 'distorted average change in loss'. The 'distorted average change in loss' should should stay near 0 as the variance increases on the right half of Figure 1 and should always increase when the variance increases on the right half of Figure 1.
 
-I then scaled the distorted average change in loss by the undistorted categorical cross entropy. This is done because the distorted average change in loss for the wrong logit case is about the same for all logit differences greater than three(because the derivative of the line is 0). To ensure the loss is greater than zero, I add the undistorted categorical cross entropy. And to ensure the variance that minimizes the loss is less than infinity, I add the exponential of the variance.
+I then scaled the 'distorted average change in loss' by the original undistorted categorical cross entropy. This is done because the distorted average change in loss for the wrong logit case is about the same for all logit differences greater than three(because the derivative of the line is 0). To ensure the loss is greater than zero, I add the undistorted categorical cross entropy. And to ensure the variance that minimizes the loss is less than infinity, I add the exponential of the variance.
 
 ![alt image][image1]
-> Figure 5a: Aleatoric variance vs loss for different incorrect logit values
+> Figure 3: Aleatoric variance vs loss for different incorrect logit values
 
 ![alt image][image14]
-> Figure 5b: Minimum aleatoric variance and minimum loss for different incorrect logit values
+> Figure 4: Minimum aleatoric variance and minimum loss for different incorrect logit values
 
-These are the results of calculating the above loss function for binary classification example where the true logit value is held constant at 1.0 and the wrong logit value changes for each line. I run 10000 Monte Carlo simulations to attempt to create smooth lines. When the wrong logit value is less than 1.0 (and thus less than the correct logit value), the minimum variance is 0.0. As the wrong logit value increases the variance that minimizes the loss increases. 
+These are the results of calculating the above loss function for binary classification example where the 'right' logit value is held constant at 1.0 and the 'wrong' logit value changes for each line. I run 10000 Monte Carlo simulations to attempt to create smooth lines. When the 'wrong' logit value is less than 1.0 (and thus less than the 'right' logit value), the minimum variance is 0.0. As the wrong 'logit' value increases, the variance that minimizes the loss increases. 
+
+![alt image][remoteimage10]
+> That was a lot. Shake it off before continuing on. 
 
 #### Calculating epistemic uncertainty
-Epistemic uncertainty takes more code to model but in my experience is easier to work with. One way of modeling epistemic uncertainty is using Monte Carlo dropout sampling (a type of variational inference) at test time. For a full explanation of why dropout can model uncertainty check out [this](http://mlg.eng.cam.ac.uk/yarin/blog_3d801aa532c1ce.html) blog and [this](https://arxiv.org/pdf/1703.04977.pdf) paper. In practice, this means including dropout in your model and running your model multiple times with dropout turned on at test time to create a distribution of outcomes and then calculating the predictive entropy (the average amount of information contained in the predictive distribution). 
+Epistemic uncertainty takes more code to model but in my experience is easier to work with. One way of modeling epistemic uncertainty is using Monte Carlo dropout sampling (a type of variational inference) at test time. For a full explanation of why dropout can model uncertainty check out [this](http://mlg.eng.cam.ac.uk/yarin/blog_3d801aa532c1ce.html) blog and [this](https://arxiv.org/pdf/1703.04977.pdf) white paper. In practice, Monte Carlo dropout sampling means including dropout in your model and running your model multiple times with dropout turned on at test time to create a distribution of outcomes. You then calculate the predictive entropy (the average amount of information contained in the predictive distribution). 
 
 To understand using dropout to calculate epistemic uncertainty, think about splitting the cat-dog image above in half vertically. 
 
 ![alt image][image11] ![alt image][image12]
 
-If you saw the left half, you would predict dog. If you saw the right half you would predict cat. A perfect 50-50 split. This image would high epistemic uncertainty because the image exhibits features that the model (you) associates with both a cat class and a dog class. 
+If you saw the left half, you would predict dog. If you saw the right half you would predict cat. A perfect 50-50 split. This image would high epistemic uncertainty because the image exhibits features that the model(you) associates with both a cat class and a dog class. 
 
 Below are two ways of calculating epistemic uncertainty. They do the exact same thing, but the first is simpler and only uses numpy. The second, uses additional Keras layers (and gets GPU acceleration) to make the predictions.
 
@@ -273,8 +312,8 @@ def predict():
 
 Note: Epistemic uncertainty is not used to train the model. It is only calculated at test time (but during a training phase) when evaluating test/real world examples. Where as aleatoric uncertainty is part of the training process.
 
-### Training
-Besides the training code above, predicting uncertainty doesn't require much additional code beyond the normal code used to train a classifier. 
+### Training a Bayesian deep learning classifier
+Besides the code above, raining a Bayesian deep learning classifier to predict uncertainty doesn't require much additional code beyond the normal code used to train a classifier!
 
 ```python
 def resnet50(input_shape):
@@ -326,31 +365,34 @@ model.compile(
 	loss_weights={'logits_variance': .2, 'softmax_output': 1.})
 ```
 
-I trained the model using two losses, one is the aleatoric uncertainty loss function and the other is the standard categorical cross entropy function. This allows the last `Dense` layer which creates the logits to only learn how to produce better logit values while the `Dense` layer that creates the variance only learns about predicting variance. The two prior `Dense` layers will train on both of these losses. Because the aleatoric uncertainty loss function includes the categorical cross entropy function, I weighted it less than the real categorical cross entropy function. These weights could be tweaked more.
+I trained the model using two losses, one is the aleatoric uncertainty loss function and the other is the standard categorical cross entropy function. This allows the last `Dense` layer, which creates the logits, to only learn how to produce better logit values while the `Dense` layer that creates the variance only learns about predicting variance. The two prior `Dense` layers will train on both of these losses. Because the aleatoric uncertainty loss function includes the categorical cross entropy function, I weighted it less than the real categorical cross entropy function. These weights could be tweaked more.
 
 I used 100 Monte Carlo simulations for calculating the Bayesian loss function. It took about 70 seconds per epoch. I found increasing the number of Monte Carlo simulations from 100 to 1000 added about four minutes to each training epoch. 
 
-I added augmented data to the training set by randomly applying a gamma value of 0.5 or 2.0 to decrease or increase the brightness of each image. In practice I found the cifar10 dataset did not have many images that would in theory exhibit high aleatoric uncertainty. By adding the lightness & darkness to images in the training set I am attempting to give the model more images with what should be high aleatoric uncertainty to learn from. 
+I added augmented data to the training set by randomly applying a gamma value of 0.5 or 2.0 to decrease or increase the brightness of each image. In practice I found the cifar10 dataset did not have many images that would in theory exhibit high aleatoric uncertainty. This is probably by design. By adding images with adjusted gamma values to images in the training set, I am attempting to give the model more images that should have high aleatoric uncertainty. 
 
 ![alt image][image4]
 > Example image with gamma value distortion. 1.0 is no distortion
 
 Predicting epistemic uncertainty does take a considerable amount of time compared to just computing the softmax output and the aleatoric uncertainty. It takes about 2-3 seconds on my Mac CPU for the fully connected layers to predict all 50000 classes for the training set but over five minutes for the epistemic uncertainty predictions. This isn't that surprising because epistemic uncertainty requires running Monte Carlo simulations on each image. I ran 100 simulations so I expected the epistemic uncertainty predictions to take ~250 seconds. 
 
-Lastly, The [repo](https://github.com/kyle-dorman/bayesian-neural-network-blogpost) is set up to easily switch out the underlying encoder network and train models for other datasets in the future. Feel free to play with it if you want a deeper dive into training your own Bayesian neural network classifier. 
+Lastly, the [repo](https://github.com/kyle-dorman/bayesian-neural-network-blogpost) is set up to easily switch out the underlying encoder network and train models for other datasets in the future. Feel free to play with it if you want a deeper dive into training your own Bayesian deep learning classifier. 
 
 ### Results
-My model's categorical accuracy on the training data is 86.4%. This is not an amazing score by any means. I was able to product higher scores, above 93%, but only by sacrificing the accuracy of the aleatoric uncertainty. There are a few different hyper parameters I could play with to increase my score. The most likely is the weights of my two loss functions. I could also unfreeze the Resnet50 layers and train those as well. While getting better accuracy scores on this dataset is interesting, Bayesian deep learning is about both the predictions and the uncertainty estimates and I will spend the rest of the post evaluating the validity of the uncertainty predictions of my model.
+![alt image][image3]
+> Example of each class in cifar10
+
+My model's categorical accuracy on the test dataset is 86.4%. This is not an amazing score by any means. I was able to product higher scores, above 93%, but only by sacrificing the accuracy of the aleatoric uncertainty. There are a few different hyper parameters I could play with to increase my score. The most likely is the weights of my two loss functions. I could also unfreeze the Resnet50 layers and train those as well. While getting better accuracy scores on this dataset is interesting, Bayesian deep learning is about both the predictions and the uncertainty estimates and I will spend the rest of the post evaluating the validity of the uncertainty predictions of my model.
 
 ![alt image][image8]
-> Figure 6: uncertainty mean and standard deviation for test set
+> Figure 4: uncertainty mean and standard deviation for test set
 
 The aleatoric uncertainty values tend to be much smaller than the epistemic uncertainty. These two values can't be compared directly on the same image. They can however be compared against the uncertainty values the model predicts for other images in this dataset. 
 
 ![alt image][image9]
-> Figure 7: Uncertainty to relative rank of correct logit value.
+> Figure 5: Uncertainty to relative rank of correct logit value.
 
-To further explore the uncertainty, I broke the test data into three groups based on the relative value of the correct logit. 'first' is all correct predictions (i.e logit value for the correct label was the largest value). 'second', the correct label is the second largest logit value. And 'rest' is all other relative values. 86.4% of samples are in the 'first' group, 8.7% are in the 'second' group, and 4.9% are in the 'rest' group. Figure 7 shows the mean and standard deviation of the aleatoric and epistemic uncertainty for the test set broken out by these three groups. As I was hoping, the epistemic and aleatoric uncertainties are correlated with the relative rank of the correct logit. This indicates the model is more likely to identify incorrect labels as situations it is unsure about. Additionally the model is predicting greater than zero uncertainty when the model's prediction is correct. I expected the model to exhibit this characteristic because the model can be uncertain even if it's prediction is correct .
+To further explore the uncertainty, I broke the test data into three groups based on the relative value of the correct logit. In Figure 5, 'first' is all correct predictions (i.e logit value for the 'right' label was the largest value). 'second', the 'right' label is the second largest logit value. And 'rest' is all other relative values. 86.4% of samples are in the 'first' group, 8.7% are in the 'second' group, and 4.9% are in the 'rest' group. Figure 5 shows the mean and standard deviation of the aleatoric and epistemic uncertainty for the test set broken out by these three groups. As I was hoping, the epistemic and aleatoric uncertainties are correlated with the relative rank of the 'right' logit. This indicates the model is more likely to identify incorrect labels as situations it is unsure about. Additionally, the model is predicting greater than zero uncertainty when the model's prediction is correct. I expected the model to exhibit this characteristic because the model can be uncertain even if it's prediction is correct.
 
 ![alt image][image5]
 > Images with highest aleatoric uncertainty
@@ -363,18 +405,20 @@ Above are the images with the highest aleatoric and epistemic uncertainty. While
 ![alt image][remoteimage2]
 > "Illustrating the difference between aleatoric and epistemic uncertainty for semantic segmentation. You can notice that aleatoric uncertainty captures object boundaries where labels are noisy. The bottom row shows a failure case of the segmentation model, when the model is unfamiliar with the footpath, and the corresponding increased epistemic uncertainty." [link](http://alexgkendall.com/computer_vision/bayesian_deep_learning_for_safe_ai/)
 
-If my model understands aleatoric uncertainty well, I should be able to input images with low contrast, high brightness/darkness or high occlusions and have my model predict larger aleatoric uncertainty. To test this theory, I applied a range of gamma values to my test images to increase/decrease the pixel intensity and predicted these augmented image labels.
+If my model understands aleatoric uncertainty well, my model should predict larger aleatoric uncertainty values for images with low contrast, high brightness/darkness, or high occlusions To test this theory, I applied a range of gamma values to my test images to increase/decrease the pixel intensity and predicted outcomes for the augmented images.
 
 ![alt image][image13]
-> Figure 8: 
+> Figure 6: 
 >	Left side: Images & uncertainties with gamma values applied. 
 >	Right side: Images & uncertainties of original image.
 
-The model's accuracy on the augmented images is 5.5%. This means the gamma images completely tricked my model. The model wasn't trained to score well on these large gamma distortions so that is to be expected. Figure 8 shows the predicted uncertainty for eight of the augmented images on the left and eight original uncertainties and images on the right. The first four images have the highest predicted aleatoric uncertainty of the augmented images and the last four had the lowest aleatoric uncertainty of the augmented images. I am excited to see that the model predicts higher aleatoric and epistemic uncertainties for each image! The aleatoric uncertainty should be larger because the averse lighting conditions make the images harder to understand and the epistemic uncertainty should be larger because the model has not been trained on images with larger gamma distortions. 
+The model's accuracy on the augmented images is 5.5%. This means the gamma images completely tricked my model. The model wasn't trained to score well on these gamma distortions so that is to be expected. Figure 6 shows the predicted uncertainty for eight of the augmented images on the left and eight original uncertainties and images on the right. The first four images have the highest predicted aleatoric uncertainty of the augmented images and the last four had the lowest aleatoric uncertainty of the augmented images. I am excited to see that the model predicts higher aleatoric and epistemic uncertainties for each augmented image compared with the original image! The aleatoric uncertainty should be larger because the mock averse lighting conditions make the images harder to understand and the epistemic uncertainty should be larger because the model has not been trained on images with larger gamma distortions. 
 
 ### Next Steps
-This is just the tip the iceberg for Bayesian deep learning. One immediate next step is to continue playing with the loss weights and unfreezing the Resnet50 convolutional layers to see if I can get a better accuracy score without losing the uncertainty characteristics I've seen above. I could also try training a model on a dataset that has more images that exhibit high aleatoric uncertainty. One dataset good candidate dataset is the [German Traffic Sign Recognition Benchmark](http://benchmark.ini.rub.de/?section=gtsrb&subsection=dataset) dataset which I've worked with in one of my Udacity projects. This dataset is specifically meant to make the classifier "cope with large variations in visual appearances due to illumination changes, partial occlusions, rotations, weather conditions". Sounds like aleatoric uncertainty to me. 
+This is just the tip the iceberg for Bayesian deep learning. One immediate next step is to continue playing with the loss weights and unfreezing the Resnet50 convolutional layers to see if I can get a better accuracy score without losing the uncertainty characteristics I've seen above. I could also try training a model on a dataset that has more images that exhibit high aleatoric uncertainty. One candidate dataset is the [German Traffic Sign Recognition Benchmark](http://benchmark.ini.rub.de/?section=gtsrb&subsection=dataset) dataset which I've worked with in one of my Udacity projects. This dataset is specifically meant to make the classifier "cope with large variations in visual appearances due to illumination changes, partial occlusions, rotations, weather conditions". Sounds like aleatoric uncertainty to me! 
 
-Another approach could be to find images that produce large uncertainties. Large epistemic uncertainties could mean types of images the dataset didn't cover well and the model isn't prepared to understand. To do this, I could use a library like [CleverHans](https://github.com/tensorflow/cleverhans) created by Ian Goodfellow. This library uses an adversarial network to help explore model vulnerabilities. For a Bayesian model, the uncertainties would also help reveal the model's vulnerabilities. Another library I am excited to explore is [Edward](http://edwardlib.org/), a Python library for probabilistic modeling, inference, and criticism. Edward supports creating network layers with probability distributions and makes it easy to perform variational inference. [This](https://alpha-i.co/blog/MNIST-for-ML-beginners-The-Bayesian-Way.html) blog post uses Edward to train a Bayesian neural network on the MNIST dataset. 
+Another approach could be to find images that produce large uncertainties for this model. Large epistemic uncertainties could mean types of images the dataset didn't cover well and the model isn't prepared to understand. To do this, I could use a library like [CleverHans](https://github.com/tensorflow/cleverhans) created by Ian Goodfellow. This library uses an adversarial network to help explore model vulnerabilities. Another library I am excited to explore is [Edward](http://edwardlib.org/), a Python library for probabilistic modeling, inference, and criticism. Edward supports creating network layers with probability distributions and makes it easy to perform variational inference. [This](https://alpha-i.co/blog/MNIST-for-ML-beginners-The-Bayesian-Way.html) blog post uses Edward to train a Bayesian deep learning classifier on the MNIST dataset. 
 
-If you've made it this far, I am very impressed and appreciative. Hopefully this post has been a good overview of Bayesian deep learning and the possibilities it unlocks. 
+If you've made it this far, I am very impressed and appreciative. Hopefully this post has taught you what Bayesian deep learning is, why including uncertainty in a deep learning model is important, and how to include uncertainty in your next project. 
+
+![alt image][remoteimage11]
