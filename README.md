@@ -27,7 +27,7 @@
 [image12]: https://github.com/kyle-dorman/bayesian-neural-network-blogpost/blob/master/blog_images/catdog_just_cat.png "Just cat"
 [image13]: https://github.com/kyle-dorman/bayesian-neural-network-blogpost/blob/master/blog_images/augmented_vs_original_uncertainty.png "Uncertainty: augmented vs original images"
 [image14]: https://github.com/kyle-dorman/bayesian-neural-network-blogpost/blob/master/blog_images/aleatoric_variance_loss_values.png "Minimum aleatoric variance and minimum loss for different incorrect logit values"
-[image15]: https://github.com/kyle-dorman/bayesian-neural-network-blogpost/blob/master/blog_images/eli.jpg "ELU activation function"
+[image15]: https://github.com/kyle-dorman/bayesian-neural-network-blogpost/blob/master/blog_images/elu.jpg "ELU activation function"
 [image16]: https://github.com/kyle-dorman/bayesian-neural-network-blogpost/blob/master/blog_images/blank-wall.jpg "Lack of visual features example"
 
 ### Intro
