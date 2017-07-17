@@ -1,17 +1,11 @@
 # Building a Bayesian deep learning classifier
 
 [//]: # (Image References)
-
-[remoteimage1]: http://mlg.eng.cam.ac.uk/yarin/blog_images/gp_net.jpg "Bayesian deep learning"
-[remoteimage2]: https://alexgkendall.github.io/assets/images/blog_uncertainty/uncertainty_types.jpg "Segmentation uncertainty"
-[remoteimage3]: http://cvgl.stanford.edu/hightlight_figures/3DVP.png "Occlusion example"
-[remoteimage5]: https://www.new-york-city-travel-tips.com/wp-content/uploads/2014/01/manhattanhenge-2-590x394.jpg "Under/over exposed example"
-[remoteimage6]: http://preview.cutcaster.com/cutcaster-photo-800939249-Semi-trucks-and-sun-glare-along-Trans-Canada-Highway.jpg "Truck with glare"
-[remoteimage7]: https://neil.fraser.name/writing/tank/tank-yes.jpg "Tank"
-[remoteimage8]: https://neil.fraser.name/writing/tank/tank-no.jpg "No tank"
-[remoteimage9]: https://cdn-images-1.medium.com/max/2000/1*m0T_vjg4mOJNIvel1JXGqQ.png "Kalman filter"
-[remoteimage10]: https://motivationdedication.files.wordpress.com/2013/03/workoverload.jpg?w=300&h=225 "Work overload"
-[remoteimage11]: http://www.midsouthphotos.com/spt-slatfatf.jpg "Thanks for all the fish"
+[remoteimage1]: https://www.new-york-city-travel-tips.com/wp-content/uploads/2014/01/manhattanhenge-2-590x394.jpg "Under/over exposed example"
+[remoteimage2]: https://neil.fraser.name/writing/tank/tank-yes.jpg "Tank"
+[remoteimage3]: https://neil.fraser.name/writing/tank/tank-no.jpg "No tank"
+[remoteimage4]: https://cdn-images-1.medium.com/max/2000/1*m0T_vjg4mOJNIvel1JXGqQ.png "Kalman filter"
+[remoteimage5]: https://motivationdedication.files.wordpress.com/2013/03/workoverload.jpg?w=300&h=225 "Work overload"
 
 [image1]: https://github.com/kyle-dorman/bayesian-neural-network-blogpost/blob/master/blog_images/aleatoric_variance_loss_function_analysis.png "Aleatoric variance vs loss for different 'wrong' logit values"
 [image2]: https://github.com/kyle-dorman/bayesian-neural-network-blogpost/blob/master/blog_images/catdog.png "Ambiguity example"
@@ -29,6 +23,11 @@
 [image14]: https://github.com/kyle-dorman/bayesian-neural-network-blogpost/blob/master/blog_images/aleatoric_variance_loss_values.png "Minimum aleatoric variance and minimum loss for different incorrect logit values"
 [image15]: https://github.com/kyle-dorman/bayesian-neural-network-blogpost/blob/master/blog_images/elu.jpg "ELU activation function"
 [image16]: https://github.com/kyle-dorman/bayesian-neural-network-blogpost/blob/master/blog_images/blank-wall.jpg "Lack of visual features example"
+[image17]: https://github.com/kyle-dorman/bayesian-neural-network-blogpost/blob/master/blog_images/semi-truck-glare.jpg "Truck with glare"
+[image18]: https://github.com/kyle-dorman/bayesian-neural-network-blogpost/blob/master/blog_images/alex_kendall_uncertainty_types.jpg "Segmentation uncertainty"
+[image19]: https://github.com/kyle-dorman/bayesian-neural-network-blogpost/blob/master/blog_images/stanford_occlusions.png "Occlusion example"
+[image20]: https://github.com/kyle-dorman/bayesian-neural-network-blogpost/blob/master/blog_images/thanks-for-all-the-fish.jpg "Thanks for all the fish"
+[image21]: https://github.com/kyle-dorman/bayesian-neural-network-blogpost/blob/master/blog_images/bayesian-deep-learning.jpg "Bayesian deep learning"
 
 ### Intro
 In this blog post, I am going to teach you how to train a Bayesian deep learning classifier using [Keras](https://keras.io/) and [tensorflow](https://www.tensorflow.org/). Before diving into the specific training example, I will cover a few important high level concepts:
@@ -44,7 +43,7 @@ This post is based on material from two blog posts ([here](http://alexgkendall.c
 ### What is Bayesian deep learning?
 Bayesian statistics is a theory in the field of statistics in which the evidence about the true state of the world is expressed in terms of degrees of belief. The combination of Bayesian statistics and deep learning in practice means including uncertainty in your deep learning model predictions. The idea of including uncertainty in neural networks was proposed as early as [1991](http://papers.nips.cc/paper/419-transforming-neural-net-output-levels-to-probability-distributions.pdf). Put simply, Bayesian deep learning adds a prior distribution over each weight and bias parameter found in a typical neural network model. In the past, Bayesian deep learning models were not used very often because they require more parameters to optimize, which can make the models difficult to work with. However, more recently, Bayesian deep learning has become more popular and new techniques are being developed to include uncertainty in a model while using the same number of parameters as a traditional model.
 
-![alt image][remoteimage1]
+![alt image][image21]
 > Visualizing a Bayesian deep learning model. 
 
 ### What is [uncertainty](https://en.wikipedia.org/wiki/Uncertainty)?
@@ -61,13 +60,13 @@ Aleatoric uncertainty measures what you can't understand from the data. It can b
 
 Concrete examples of aleatoric uncertainty in stereo imagery are occlusions (parts of the scene a camera can't see), lack of visual features (i.e a blank wall), or over/under exposed areas (glare & shading).
 
-![alt image][remoteimage3]
+![alt image][image19]
 > Occlusions example
 
 ![alt image][image16]
 > Lack of visual features example
 
-![alt image][remoteimage5]
+![alt image][remoteimage1]
 > Under/over exposed example
 
 #### Epistemic uncertainty
@@ -86,7 +85,7 @@ Note: In a classification problem, the softmax output gives you a probability va
 #### Why is Aleatoric uncertainty important?
 Aleatoric uncertainty is important in cases where parts of the observation space have higher noise levels than others. For example, aleatoric uncertainty played a role in the first fatality involving a self driving car. Tesla has said that during this incident, the car's autopilot failed to recognize the white truck against a bright sky. An image segmentation classifier that is able to predict aleatoric uncertainty would recognize that this particular area of the image was difficult to interpret and predicted a high uncertainty. In the case of the Tesla incident, although the car's radar could "see" the truck, the radar data was inconsistent with the image classifier data and the car's path planner ultimately ignored the radar data (radar data is known to be noisy). If the image classifier had included a high uncertainty with its prediction, the path planner would have known to ignore the image classifier prediction and use the radar data instead (this is oversimplified but is effectively what would happen. See Kalman filters below).
 
-![alt image][remoteimage6]
+![alt image][image17]
 > Even for a human, driving when roads have lots of glare is difficult
 
 #### Why is Epistemic uncertainty important?
@@ -94,12 +93,12 @@ Epistemic uncertainty is important because it identifies situations the model wa
 
 Epistemic uncertainty is also helpful for exploring your dataset. For example, epistemic uncertainty would have been helpful with [this](https://neil.fraser.name/writing/tank/) particular neural network mishap from the 1980s. In this case, researchers trained a neural network to recognize tanks hidden in trees versus trees without tanks. After training, the network performed incredibly well on the training set and the test set. The only problem was that all of the images of the tanks were taken on cloudy days and all of the images without tanks were taken on a sunny day. The classifier had actually learned to identify sunny versus cloudy days. Whoops.
 
-![alt image][remoteimage7] ![alt image][remoteimage8]
+![alt image][remoteimage2] ![alt image][remoteimage3]
 > Tank & cloudy vs no tank & sunny
 
 Uncertainty predictions in deep learning models are also important in robotics. I am currently enrolled in the Udacity self driving car nanodegree and have been learning about techniques cars/robots use to recognize and track objects around then. Self driving cars use a powerful technique called [Kalman filters](https://en.wikipedia.org/wiki/Kalman_filter) to track objects. Kalman filters combine a series of measurement data containing statistical noise and produce estimates that tend to be more accurate than any single measurement. Traditional deep learning models are not able to contribute to Kalman filters because they only predict an outcome and do not include an uncertainty term. In theory, Bayesian deep learning models could contribute to Kalman filter tracking.
 
-![alt image][remoteimage9]
+![alt image][remoteimage4]
 > Radar and lidar data merged into the Kalman filter. Image data could be incorporated as well. 
 
 ### Calculating uncertainty in deep learning classification models
@@ -206,7 +205,7 @@ These are the results of calculating the above loss function for binary classifi
 
 Note: When generating this graph, I ran 10,000 Monte Carlo simulations to create smooth lines. When training the model, I only ran 100 Monte Carlo simulations as this should be sufficient to get a reasonable mean. 
 
-![alt image][remoteimage10]
+![alt image][remoteimage5]
 > Brain overload? Grab a time appropriate beverage before continuing.
 
 #### Calculating epistemic uncertainty
@@ -386,12 +385,12 @@ Lastly, my [project](https://github.com/kyle-dorman/bayesian-neural-network-blog
 My model's categorical accuracy on the test dataset is 86.4%. This is not an amazing score by any means. I was able to produce scores higher than 93%, but only by sacrificing the accuracy of the aleatoric uncertainty. There are a few different hyperparameters I could play with to increase my score. I spent very little time tuning the weights of the two loss functions and I suspect that changing these hyperparameters could greatly increase my model accuracy. I could also unfreeze the Resnet50 layers and train those as well. While getting better accuracy scores on this dataset is interesting, Bayesian deep learning is about both the predictions and the uncertainty estimates and so I will spend the rest of the post evaluating the validity of the uncertainty predictions of my model.
 
 ![alt image][image8]
-> Figure 4: uncertainty mean and standard deviation for test set
+> Figure 5: uncertainty mean and standard deviation for test set
 
 The aleatoric uncertainty values tend to be much smaller than the epistemic uncertainty. These two values can't be compared directly on the same image. They can however be compared against the uncertainty values the model predicts for other images in this dataset.
 
 ![alt image][image9]
-> Figure 5: Uncertainty to relative rank of 'right' logit value.
+> Figure 6: Uncertainty to relative rank of 'right' logit value.
 
 To further explore the uncertainty, I broke the test data into three groups based on the relative value of the correct logit. In Figure 5, 'first' includes all of the correct predictions (i.e logit value for the 'right' label was the largest value). 'second', includes all of the cases where the 'right' label is the second largest logit value. 'rest' includes all of the other cases. 86.4% of the samples are in the 'first' group, 8.7% are in the 'second' group, and 4.9% are in the 'rest' group. Figure 5 shows the mean and standard deviation of the aleatoric and epistemic uncertainty for the test set broken out by these three groups. As I was hoping, the epistemic and aleatoric uncertainties are correlated with the relative rank of the 'right' logit. This indicates the model is more likely to identify incorrect labels as situations it is unsure about. Additionally, the model is predicting greater than zero uncertainty when the model's prediction is correct. I expected the model to exhibit this characteristic because the model can be uncertain even if it's prediction is correct.
 
@@ -402,13 +401,14 @@ To further explore the uncertainty, I broke the test data into three groups base
 > Images with the highest epistemic uncertainty
 
 Above are the images with the highest aleatoric and epistemic uncertainty. While it is interesting to look at the images, it is not exactly clear to me why these images images have high aleatoric or epistemic uncertainty. This is one downside to training an image classifier to produce uncertainty. The uncertainty for the entire image is reduced to a single value. It is often times much easier to understand uncertainty in an image segmentation model because it is easier to compare the results for each pixel in an image.
-![alt image][remoteimage2]
+
+![alt image][image18]
 > "Illustrating the difference between aleatoric and epistemic uncertainty for semantic segmentation. You can notice that aleatoric uncertainty captures object boundaries where labels are noisy. The bottom row shows a failure case of the segmentation model, when the model is unfamiliar with the footpath, and the corresponding increased epistemic uncertainty." [link](http://alexgkendall.com/computer_vision/bayesian_deep_learning_for_safe_ai/)
 
 If my model understands aleatoric uncertainty well, my model should predict larger aleatoric uncertainty values for images with low contrast, high brightness/darkness, or high occlusions To test this theory, I applied a range of gamma values to my test images to increase/decrease the pixel intensity and predicted outcomes for the augmented images.
 
 ![alt image][image13]
-> Figure 6: 
+> Figure 7: 
 >	Left side: Images & uncertainties with gamma values applied. 
 >	Right side: Images & uncertainties of original image.
 
@@ -423,4 +423,4 @@ Another library I am excited to explore is Edward, a Python library for probabil
 
 If you've made it this far, I am very impressed and appreciative. Hopefully this post has inspired you to include uncertainty in your next deep learning project.
 
-![alt image][remoteimage11]
+![alt image][image20]
